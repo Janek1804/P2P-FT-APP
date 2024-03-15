@@ -1,3 +1,5 @@
+P2P Application for sharing files in LAN environment.
+
 ### TODO:
 #   event loop
 #   peer exchange protocol
