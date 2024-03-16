@@ -5,19 +5,26 @@ from scapy.all import Packet
 from scapy.fields import *
 from scapy.sendrecv import AsyncSniffer
 from scapy.all import get_if_addr
+from scapy.layers.inet import IP
 
 bcast_timer = 90
 dead_timer = 200
 host = get_if_addr(conf.iface)
 
 peers = {} # format: Address : Last time heard
-msg_list = []
 
 
 async def listenPEX(bcast:str)-> None:
-    """Listens for PEX messages and forwards them for processing"""
-    sniffer = AsyncSniffer(filter=f"(udp dst port 6771) && (dst host {host} || dst net {bcast})", prn=lambda x: msg_list.append(x))
+    """[!] Listens for PEX messages and handles adding peers, WARNING: this function expects to be run on a separate thread"""
+    msg_list = []
+    sniffer = AsyncSniffer(filter=f"(udp dst port 6771) && (dst host {host} || dst net {bcast})", prn=lambda x: msg_list.append(x), store = False)
     sniffer.start()
+    while True:
+        for msg in msg_list:
+            if PEX in msg:
+                peers[msg[PEX].peer_address] = time.time()
+            msg_list.remove(msg)
+
 
 async def advertise(resources:list,bcast:str) -> None:
     """Broadcasts its presence to other peers on LAN"""
@@ -32,10 +39,11 @@ async def advertise(resources:list,bcast:str) -> None:
 
 async def verifyPeersLife() -> None:
     """Verifies each peer once per broadcast cycle"""
-    for entry in peers.keys():
-        if time.time() - peers[entry] > dead_timer:
-            peers.pop(entry)
-    await as_sleep(bcast_timer)
+    while True:
+        for entry in peers.keys():
+            if time.time() - peers[entry] > dead_timer:
+                peers.pop(entry)
+        await as_sleep(bcast_timer)
 
 
 class PEX(Packet):
