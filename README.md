@@ -1,10 +1,12 @@
-P2P Application for sharing files in LAN environment.
+## P2P Application for sharing files in LAN environment.
 
-### TODO:
-#   event loop
-#   peer exchange protocol
-#   file torrenting
-#   documentation?
+## TODO:
+<ul>   
+<li>event loop</li>
+<li>peer exchange protocol</li>
+<li>file torrenting</li>
+<li>documentation</li>
+</ul>
 
 ## Peer Exchange Protocol
 Peer advertisement- wanted resources- owned resources
