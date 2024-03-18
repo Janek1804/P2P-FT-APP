@@ -28,6 +28,7 @@ async def listenPEX(bcast: str)-> None:
             if PEX in msg:
                 peers[msg[PEX].peer_address] = time.time()
             msg_list.remove(msg)
+        await as_sleep(0) # yielding control just in case something else is on the same thread
 
 
 async def advertise(resources: list, bcast: str) -> None:
@@ -57,30 +58,25 @@ async def verifyPeersLife() -> None:
         await as_sleep(bcast_timer)
 
 
-async def obtainFromPeer(resource: str, peer: str, port: int = 6771) -> list[bytes]:
+async def obtainFromPeer(resource: str, peer: str, port: int = 6771) -> bytes:
     """Attempts to obtain specified resource from specified peer.
         INPUT:
         - resource (string) - resource to be requested
         - peer (string) - peer's ip address in string format
-        - port (int) - destination port in string format
+        - port (int) [default: 6771] - destination port in int format
         RETURNS:
-        - pieces (list[bytes]) - containing obtaines pieces from peer, in the event of failure returns empty list"""
+        - piece (bytes) - containing obtaines piece from peer, in the event of failure returns empty bytes object"""
     reader, writer = await open_connection(peer, port=port)
     writer.write(f"Request:{resource}".encode()) # TODO: This seems a bit silly...
-    pieces = []
     await writer.drain()
     try:
-        while True:
-            async with timeout(10):
-                line = await reader.readline()
-                if not line:
-                    break
-            # TODO: Figure out the format and add translation from line to pieces
+        async with timeout(60):
+            piece = await reader.read(-1)
     except TimeoutError:
-        pass
+        piece = b""
     writer.close()
     await writer.wait_closed()
-    return pieces
+    return piece
 
 
 class PEX(Packet):
