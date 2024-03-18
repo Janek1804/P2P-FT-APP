@@ -1,4 +1,6 @@
+from turtle import pensize
 import aiofiles
+import asyncio
 from os import scandir
 async def shdir(path:str='shared',num_pieces=512,target='pieces') -> None:
     tmp = scandir(path)
@@ -11,10 +13,14 @@ async def shdir(path:str='shared',num_pieces=512,target='pieces') -> None:
 
 async def create_pieces(filepath:str,num_pieces:int)->list[bytes]:
     async with aiofiles.open(filepath,'rb') as file:
-        content:bytes = file.read()
+        content:bytes = await file.read()
         filesize:int = len(content)
+        print(filesize)
         piecesize:int = filesize//num_pieces
-        pieces:list[bytes] = [content[i:i+piecesize] for i in range(0,num_pieces,piecesize)]
+        print(piecesize)
+        pieces:list[bytes] = [] 
+        for i in range(0,filesize,piecesize):
+            pieces.append(content[i:i+piecesize])
         if filesize % num_pieces != 0:
             pieces.append(content[piecesize*(num_pieces-1):-1])
         return pieces
@@ -25,3 +31,14 @@ async def store_pieces(pieces:list[bytes],path:str)->None:
                 await file.write(piece)
     else:
         print("No pieces to write")
+
+if __name__ == "__main__":
+    file="test.txt"
+    pieces = asyncio.run(create_pieces(file,2))
+    print(pieces)
+    with open("aaa.txt",'wb') as f2:
+        content = b""
+        for piece in pieces:
+            content += piece
+        print(content)
+        f2.write(content)

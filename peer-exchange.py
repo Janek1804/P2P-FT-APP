@@ -2,7 +2,6 @@ from asyncio import Timeout, open_connection
 from asyncio import sleep as as_sleep
 from asyncio import timeout
 from asyncio.windows_events import NULL
-from networkx import is_empty
 from scapy.all import Packet
 from scapy.fields import *
 from scapy.sendrecv import AsyncSniffer
