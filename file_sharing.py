@@ -12,8 +12,11 @@ async def shdir(path:str='shared',num_pieces=512,target='pieces') -> None:
 async def create_pieces(filepath:str,num_pieces:int)->list[bytes]:
     async with aiofiles.open(filepath,'rb') as file:
         content:bytes = file.read()
-        size = len(content)
-        pieces:list[bytes] = [content[i:i+(size/num_pieces)] for i in range(0,num_pieces,size/num_pieces)]
+        filesize:int = len(content)
+        piecesize:int = filesize//num_pieces
+        pieces:list[bytes] = [content[i:i+piecesize] for i in range(0,num_pieces,piecesize)]
+        if filesize % num_pieces != 0:
+            pieces.append(content[piecesize*(num_pieces-1):-1])
         return pieces
 async def store_pieces(pieces:list[bytes],path:str)->None:
     if len(pieces) > 0:
