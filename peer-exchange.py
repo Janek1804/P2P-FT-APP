@@ -1,5 +1,4 @@
 # TODO: Figure out how to get the proper broadcast and host ip addr., as 255.255.255.255 can fail (Much fun)
-# TODO: Consider adding handling of cancellations everywhere
 
 from asyncio import CancelledError, wait_for, get_running_loop, open_connection
 from asyncio import sleep as as_sleep
@@ -28,7 +27,7 @@ async def listenPEX(bcast: str, PEX_queue: asyncio.Queue)-> None:
     try:
         while True:
             data, addr = await get_running_loop().sock_recv(sock, 1024)
-            PEX_queue.put((addr, data.decode(), time.time()))
+            PEX_queue.put_nowait((addr, data.decode(), time.time()))
             await as_sleep(0) # yielding control just in case something else is on the same thread
     except CancelledError:
         pass
@@ -39,11 +38,18 @@ async def handlePEX(PEX_queue: asyncio.Queue):
     """ Handles received PEX messages
         INPUT:
         - PEX_queue (queue) - asyncio queue of received PEX messages"""
-    while True:
-        msg = await PEX_queue.get()
-        peers[msg[0]] = msg[2]
-        # TODO: Add resource list handling
-        PEX_queue.task_done()
+    try:
+        while True:
+            msg = await PEX_queue.get()
+            try:
+                peers[msg[0]] = msg[2]
+                # TODO: Add resource list handling
+            except CancelledError:
+                PEX_queue.put_nowait(msg)
+            finally:
+                PEX_queue.task_done()
+    except CancelledError:
+        return
 
 
 async def advertise(resources: list, bcast: str) -> None:
@@ -76,11 +82,14 @@ async def verifyPeersLife() -> None:
     """Verifies each peer once per broadcast cycle
         INPUT ABSENT
         RETURNS NOTHING"""
-    while True:
-        for entry in peers.keys():
-            if time.time() - peers[entry] > dead_timer:
-                peers.pop(entry)
-        await as_sleep(bcast_timer)
+    try:
+        while True:
+            for entry in peers.keys():
+                if time.time() - peers[entry] > dead_timer:
+                    peers.pop(entry)
+            await as_sleep(bcast_timer)
+    except CancelledError:
+        return
 
 
 async def obtainFromPeer(resource: str, peer: str, port: int = 6771) -> bytes:
@@ -91,16 +100,26 @@ async def obtainFromPeer(resource: str, peer: str, port: int = 6771) -> bytes:
         - port (int) [default: 6771] - destination port in int format
         RETURNS:
         - piece (bytes) - containing obtaines piece from peer, in the event of failure returns empty bytes object"""
-    reader, writer = await open_connection(peer, port=port)
-    writer.write(f"REQUEST:{resource}".encode())
-    await writer.drain()
     try:
-        piece = await wait_for(reader.read(-1), timeout = 60)
-    except TimeoutError:
+        reader, writer = await open_connection(peer, port=port)
+    except CancelledError:
+        return
+    try:
         piece = b""
-    writer.close()
-    await writer.wait_closed()
-    return piece
+        writer.write(f"REQUEST:{resource}".encode())
+        await writer.drain()
+        try:
+            piece = await wait_for(reader.read(-1), timeout = 60)
+        except TimeoutError:
+            pass
+    except CancelledError:
+        await writer.drain()
+        writer.write(f"CANCEL_REQUEST:{resource}".encode())
+    finally:
+        await writer.drain()
+        writer.close()
+        await writer.wait_closed()
+        return piece
 
 async def selfTestOne():
     print("Running network self-test.")
@@ -110,8 +129,6 @@ async def selfTestOne():
         await asyncio.wait_for(advertise(res_list, bcast), timeout = 60)            
     except TimeoutError or CancelledError:
         print("Ended advertising test")
-    finally:
-        return
 
 if __name__ == "__main__":
     asyncio.run(selfTestOne())
