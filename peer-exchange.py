@@ -1,34 +1,49 @@
-from asyncio import Timeout, open_connection
+# TODO: Figure out how to get the proper broadcast and host ip addr., as 255.255.255.255 can fail (Much fun)
+# TODO: Consider adding handling of cancellations everywhere
+
+from asyncio import CancelledError, wait_for, get_running_loop, open_connection
 from asyncio import sleep as as_sleep
-from asyncio import timeout
-from asyncio.windows_events import NULL
-from scapy.all import Packet
-from scapy.fields import *
-from scapy.sendrecv import AsyncSniffer
-from scapy.all import get_if_addr
-from scapy.layers.inet import IP
+import asyncio
+import socket
+import time
 
 bcast_timer = 90
 dead_timer = 200
-host = get_if_addr(conf.iface)
+host = socket.gethostbyname(socket.gethostname())
+msg_list = []
 
 peers = {} # format: Address : Last time heard
 
-
-async def listenPEX(bcast: str)-> None:
-    """[!] Listens for PEX messages and handles adding peers, WARNING: this function expects to be run on a separate thread
+async def listenPEX(bcast: str, PEX_queue: asyncio.Queue)-> None:
+    # TODO: Verify whether bcast is even needed
+    """[!] Listens for PEX messages, WARNING: this function expects to be run on a separate thread
         INPUT:
         - bcast (string) - broadcast ip address in string format
+        - PEX_queue (queue) - asyncio queue to put received PEX messages
         RETURNS NOTHING"""
-    msg_list = []
-    sniffer = AsyncSniffer(filter=f"(udp dst port 6771) && (dst host {host} || dst net {bcast})", prn=lambda x: msg_list.append(x), store = False)
-    sniffer.start()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(('', 6771))
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.setblocking(False)
+    try:
+        while True:
+            data, addr = await get_running_loop().sock_recv(sock, 1024)
+            PEX_queue.put((addr, data.decode(), time.time()))
+            await as_sleep(0) # yielding control just in case something else is on the same thread
+    except CancelledError:
+        pass
+    finally:
+        sock.close()
+
+async def handlePEX(PEX_queue: asyncio.Queue):
+    """ Handles received PEX messages
+        INPUT:
+        - PEX_queue (queue) - asyncio queue of received PEX messages"""
     while True:
-        for msg in msg_list:
-            if PEX in msg:
-                peers[msg[PEX].peer_address] = time.time()
-            msg_list.remove(msg)
-        await as_sleep(0) # yielding control just in case something else is on the same thread
+        msg = await PEX_queue.get()
+        peers[msg[0]] = msg[2]
+        # TODO: Add resource list handling
+        PEX_queue.task_done()
 
 
 async def advertise(resources: list, bcast: str) -> None:
@@ -37,14 +52,24 @@ async def advertise(resources: list, bcast: str) -> None:
         - resources (list) - list of resources to be broadcast
         - bcast (string) - broadcast ip address in string format
         RETURNS NOTHING"""
-    reader, writer = await open_connection(bcast,port=6771)
-    while True:
-        writer.write(PEX(peer_address = host, Resources = resources))
-        next_bcast = time.time() + bcast_timer # next_bcast as specific time
-        await writer.drain()
-        next_bcast = next_bcast - time.time() # next_bcast as delay
-        if next_bcast > 0:
-            await as_sleep(next_bcast-time.time())
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(('', 6771))
+    sock.connect((bcast, 6771))
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    sock.setblocking(False)
+    loop = get_running_loop()
+    msg = f"PEX-PEER:{host};RESOURCES:{','.join(resources)}".encode()
+    try:
+        while True:
+            next_bcast = time.time() + bcast_timer # next_bcast as specific time
+            await loop.sock_sendall(sock, msg)
+            next_bcast = next_bcast - time.time() # next_bcast as delay
+            if next_bcast >= 0:
+                await as_sleep(next_bcast)
+    except CancelledError:
+        pass
+    finally:
+        sock.close()
 
 
 async def verifyPeersLife() -> None:
@@ -67,22 +92,26 @@ async def obtainFromPeer(resource: str, peer: str, port: int = 6771) -> bytes:
         RETURNS:
         - piece (bytes) - containing obtaines piece from peer, in the event of failure returns empty bytes object"""
     reader, writer = await open_connection(peer, port=port)
-    writer.write(f"Request:{resource}".encode()) # TODO: This seems a bit silly...
+    writer.write(f"REQUEST:{resource}".encode())
     await writer.drain()
     try:
-        async with timeout(60):
-            piece = await reader.read(-1)
+        piece = await wait_for(reader.read(-1), timeout = 60)
     except TimeoutError:
         piece = b""
     writer.close()
     await writer.wait_closed()
     return piece
 
+async def selfTestOne():
+    print("Running network self-test.")
+    res_list = ["TESTING", "TEST"]
+    bcast = "192.168.2.255"
+    try:
+        await asyncio.wait_for(advertise(res_list, bcast), timeout = 60)            
+    except TimeoutError or CancelledError:
+        print("Ended advertising test")
+    finally:
+        return
 
-class PEX(Packet):
-    """Defines PEX packet based on scapy"""
-    name ="Peer Exchange"
-    fields_desc= [IPField(name="peer_address",default="127.0.0.1"),
-    IntField(name="port",default=6771),
-    StrField(name="Resources")
-    ]
+if __name__ == "__main__":
+    asyncio.run(selfTestOne())
