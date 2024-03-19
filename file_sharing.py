@@ -2,6 +2,7 @@ from turtle import pensize
 import aiofiles
 import asyncio
 from os import scandir
+
 async def shdir(path:str='shared',num_pieces=512,target='pieces') -> None:
     tmp = scandir(path)
     for filename in tmp:
@@ -31,6 +32,9 @@ async def store_pieces(pieces:list[bytes],path:str)->None:
                 await file.write(piece)
     else:
         print("No pieces to write")
+
+async def trackpieces(filename:str,resourcelist:list[str])->None:
+    pass #TODO: Add piece tracking
 
 if __name__ == "__main__":
     file="test.txt"
