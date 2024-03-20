@@ -51,7 +51,7 @@ async def trackpieces(filename:str,resourcelist:list[str])->None:
             requested.append(piecenum)
             tmp = piece.split(":")
             received = await obtainFromPeer(tmp[2:],tmp[0],tmp[1])
-            if received != None:
+            if received != b"":
                 content.insert(piecenum-1,received)
             else:
                 requested.remove(piecenum)

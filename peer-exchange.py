@@ -5,6 +5,7 @@ from asyncio import sleep as as_sleep
 import asyncio
 import socket
 import time
+from typing import Optional
 
 bcast_timer = 90
 dead_timer = 200
@@ -27,17 +28,18 @@ async def listenPEX(bcast: str, PEX_queue: asyncio.Queue)-> None:
     try:
         while True:
             data, addr = await get_running_loop().sock_recv(sock, 1024)
-            PEX_queue.put_nowait((addr, data.decode(), time.time()))
+            PEX_queue.put_nowait((addr, bytes(data).decode(), time.time()))
             await as_sleep(0) # yielding control just in case something else is on the same thread
     except CancelledError:
         pass
     finally:
         sock.close()
 
-async def handlePEX(PEX_queue: asyncio.Queue):
+async def handlePEX(PEX_queue: asyncio.Queue) -> None:
     """ Handles received PEX messages
         INPUT:
-        - PEX_queue (queue) - asyncio queue of received PEX messages"""
+        - PEX_queue (queue) - asyncio queue of received PEX messages
+        RETURNS NOTHING"""
     try:
         while True:
             msg = await PEX_queue.get()
@@ -50,6 +52,51 @@ async def handlePEX(PEX_queue: asyncio.Queue):
                 PEX_queue.task_done()
     except CancelledError:
         return
+
+
+# TODO: Finish this
+async def handleRequests(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+    """[!] Handles TCP requests, WARNING: this function should only be run by the TCP server
+        INPUT:
+        - reader (asyncio.StreamReader) - incoming message reader
+        - writer (asyncio.StreamWriter) - message writer
+        RETURNS NOTHING"""
+    try:
+        try:
+            request = await wait_for(reader.read(-1), timeout = 120)
+        except TimeoutError:
+            writer.close()
+            await writer.wait_closed()
+            return
+        # Request analysis
+        # Check if resources present
+        # Reply: "RESOURCE_MISSING" / f"RESOURCE:{piece}"
+    except CancelledError:
+        pass
+    finally:
+        await writer.drain()
+        writer.close()
+        await writer.wait_closed()
+
+
+async def listenTCP(sock: Optional[socket.socket] = None, port: int = 6772) -> None:
+    """[!] Listens for TCP requests on the specified port, WARNING: this function expects to be run on a separate thread
+        INPUT:
+        - sock (socket) [OPTIONAL] - TCP socket to listen at, if absent port is used instead
+        - port (int) [default: 6772] - TCP port number to listen at, will be used only if sock is None
+        RETURNS NOTHING"""
+    try:
+        if socket is None:
+            serv = await asyncio.start_server(handleRequests, "127.0.0.1", port)
+        else:
+            serv = await asyncio.start_server(handleRequests, sock=sock)
+    except CancelledError:
+        return
+    try:
+        async with serv:
+            await serv.serve_forever()
+    except CancelledError:
+        serv.close()
 
 
 async def advertise(resources: list, bcast: str) -> None:
@@ -100,12 +147,12 @@ async def obtainFromPeer(resource: str, peer: str, port: int = 6771) -> bytes:
         - port (int) [default: 6771] - destination port in int format
         RETURNS:
         - piece (bytes) - containing obtaines piece from peer, in the event of failure returns empty bytes object"""
+    piece = b""
     try:
         reader, writer = await open_connection(peer, port=port)
     except CancelledError:
-        return
+        return piece
     try:
-        piece = b""
         writer.write(f"REQUEST:{resource}".encode())
         await writer.drain()
         try:
