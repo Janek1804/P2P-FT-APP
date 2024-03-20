@@ -1,18 +1,19 @@
 # TODO: Figure out how to get the proper broadcast and host ip addr., as 255.255.255.255 can fail (Much fun)
 
-from asyncio import CancelledError, wait_for, get_running_loop, open_connection
-from asyncio import sleep as as_sleep
-import asyncio
-import socket
 import time
+import socket
+import asyncio
+
 from typing import Optional
+from asyncio import sleep as as_sleep
+from asyncio import CancelledError, wait_for, get_running_loop, open_connection
 
 bcast_timer = 90
 dead_timer = 200
 host = socket.gethostbyname(socket.gethostname())
 msg_list = []
 
-peers = {} # format: Address : Last time heard
+peers = {} # format: Address : [Last time heard, Resource list]
 
 async def listenPEX(bcast: str, PEX_queue: asyncio.Queue)-> None:
     # TODO: Verify whether bcast is even needed
@@ -44,8 +45,9 @@ async def handlePEX(PEX_queue: asyncio.Queue) -> None:
         while True:
             msg = await PEX_queue.get()
             try:
-                peers[msg[0]] = msg[2]
-                # TODO: Add resource list handling
+                if msg[1].startswith("PEX-PEER"):
+                    data = msg[1].partition(";")  # data[0] = f"PEX-PEER:{host}", data[2] = f"RESOURCES:{','.join(resources)}"
+                    peers[data[0].replace("PEX-PEER:", "", 1)] = [msg[2], data[2].replace("RESOURCES:", "", 1).split(",")]
             except CancelledError:
                 PEX_queue.put_nowait(msg)
             finally:
@@ -79,11 +81,11 @@ async def handleRequests(reader: asyncio.StreamReader, writer: asyncio.StreamWri
         await writer.wait_closed()
 
 
-async def listenTCP(sock: Optional[socket.socket] = None, port: int = 6772) -> None:
+async def listenTCP(sock: Optional[socket.socket] = None, port: int = 6771) -> None:
     """[!] Listens for TCP requests on the specified port, WARNING: this function expects to be run on a separate thread
         INPUT:
         - sock (socket) [OPTIONAL] - TCP socket to listen at, if absent port is used instead
-        - port (int) [default: 6772] - TCP port number to listen at, will be used only if sock is None
+        - port (int) [default: 6771] - TCP port number to listen at, will be used only if sock is None
         RETURNS NOTHING"""
     try:
         if socket is None:
