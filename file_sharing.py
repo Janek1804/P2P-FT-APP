@@ -1,4 +1,4 @@
-from turtle import pensize
+from peer_exchange import obtainFromPeer
 import aiofiles
 import asyncio
 from os import scandir
@@ -32,15 +32,42 @@ async def store_pieces(pieces:list[bytes],path:str)->None:
                 await file.write(piece)
     else:
         print("No pieces to write")
-
+#Assuming resource list element local format <Address>:<Port>:<Filename>:<Piece Number>:<Piece Quantity>
 async def trackpieces(filename:str,resourcelist:list[str])->None:
-    pass #TODO: Add piece tracking
+    filepieces:list[str] = []
+    piecenums:list[int] = []
+    for res in resourcelist:
+        if res.find(filename) != -1:
+            filepieces.append(res)
+            piecenums.append(res.split(":")[-2])
+    if set(piecenums) != set(range(1,int(filepieces[-1][-1])+1)):
+        print("Desired file unavailable!")
+        return
+    content:list[bytes]=[]
+    requested:list[int] = []
+    for piece in filepieces:
+        piecenum:int = int(piece.split(":")[-2])
+        if piecenum not in requested:
+            requested.append(piecenum)
+            received = await obtainFromPeer(piece)
+            if received != None:
+                content.insert(piecenum-1,received)
+            else:
+                requested.remove(piecenum)
+    writefile(filename,content)
+    
+async def writefile(filename:str,pieces:list[bytes])-> None:
+    with aiofiles.open(filename, "ab") as file:
+        content:bytes = b""
+        for piece in pieces:
+            content += piece
+        file.write(content)
 
 if __name__ == "__main__":
     file="test.txt"
     pieces = asyncio.run(create_pieces(file,2))
     print(pieces)
-    with open("aaa.txt",'wb') as f2:
+    with open("aaa.txt",'ab') as f2:
         content = b""
         for piece in pieces:
             content += piece
