@@ -1,8 +1,10 @@
 import asyncio
 
 from asyncio import CancelledError
+from socket import gethostname, gethostbyname_ex
 
 from peer_exchange import host
+
 
 use_color = True
 
@@ -81,14 +83,16 @@ async def Console() -> None:
         INPUT ABSENT
         RETURNS NOTHING"""
     try:
-        commands = {"help": "List all commands",
-                    "download": "Download file with name given after a space",
-                    "list_local": "List locally available files",
-                    "list_remote": "List downloadable files",    
-                    "set_address": "Select IP address to use by this peer",
-                    "show_address": "Show IP address currently used by this peer",
-                    "show_interfaces": "Show IP addresses of all detected interfaces",
-                    "toggle_color": "Enable/disable colors in terminal"}
+        commands = {
+            "help": "List all commands",
+            "download": "Download file with name given after a space",
+            "list_local": "List locally available files",
+            "list_remote": "List downloadable files",
+            "set_address": "Select IP address to use by this peer",
+            "show_address": "Show IP address currently used by this peer",
+            "show_interfaces": "Show IP addresses of all detected interfaces",
+            "toggle_color": "Enable/disable colors in terminal"
+            }
         cmd_list = list(commands.keys())
         cmd_length = max(len(key) for key in commands.keys())
         print("Welcome to ", end="")
@@ -121,6 +125,13 @@ async def Console() -> None:
                 case "show_address":
                     print("Using IP address: ", end="")
                     colorprint(f"{host}\n", "cyan")
+                case "show_interfaces":
+                    for addr in gethostbyname_ex(gethostname())[2]:
+                        colorprint(addr, "cyan")
+                        if addr == host:
+                            colorprint("\t[BEING USED]", "green")
+                        print()
+
 
     except CancelledError:
         print("CONSOLE TASK CANCELLED")
