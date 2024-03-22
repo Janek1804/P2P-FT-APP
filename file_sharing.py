@@ -2,8 +2,14 @@ from peer_exchange import obtainFromPeer
 import aiofiles
 import asyncio
 from os import scandir
-shared = []
-async def shdir(path:str='shared',num_pieces=512,target='pieces') -> None:
+shared = []; """Stores shared resources. resource format: <filename>:<piece_number>:<piece_quantity>"""
+async def shdir(path:str='shared',num_pieces:int=512,target:str='pieces') -> None:
+    """Prepares all the files from specified directory to be transferred
+        INPUT:
+        -path (string) - path to directory to be shared
+        -num_pieces (int) - number of pieces to divide file into
+        -target (string) - path to directory storing the pieces
+        RETURNS NOTHING"""
     tmp = scandir(path)
     for filename in tmp:
         if filename.is_file():
@@ -13,7 +19,12 @@ async def shdir(path:str='shared',num_pieces=512,target='pieces') -> None:
             await shdir(f'{path}/{filename}',num_pieces,target)
 
 async def create_pieces(filepath:str,num_pieces:int)->list[bytes]:
-    """"""
+    """Creates pieces from specified file
+        INPUT:
+        -filepath (string) - path to file
+        -num_pieces (int) - quantity of pieces to divide the file
+        RETURNS:
+        -pieces (list[bytes]) - pieces of the file ready to be transferred"""
     async with aiofiles.open(filepath,'rb') as file:
         content:bytes = await file.read()
         filesize:int = len(content)
@@ -29,14 +40,25 @@ async def create_pieces(filepath:str,num_pieces:int)->list[bytes]:
             pieces.append(content[piecesize*(num_pieces-1):])
         return pieces
 async def store_pieces(pieces:list[bytes],path:str)->None:
+    """Writes given pieces to a file
+        INPUT:
+        -pieces (list[bytes]) - pieces to be written
+        -path (string) - name of files to write the pieces
+            example: path=somefile results in pieces called somefile1, somefile2 etc.
+        RETURNS NOTHING"""
     if len(pieces) > 0:
-        async with aiofiles.open(path,'ab') as file:
-            for piece in pieces:
+        for piece in pieces:
+            async with aiofiles.open(path+str(pieces.index(piece)+1),'ab') as file:
                 await file.write(piece)
     else:
         print("No pieces to write")
 #Assuming resource list element local format <Address>:<Port>:<Filename>:<Piece Number>:<Piece Quantity>
 async def trackpieces(filename:str,resourcelist:list[str])->None:
+    """Tracks pieces of file being obtained and stores the downloaded file
+        INPUT:
+        -filename (string) - name of file to obtain
+        -resourcelist (list[string]) -list storing resources shared by peers
+        RETURNS NOTHING"""
     filepieces:list[str] = []
     piecenums:list[int] = []
     for res in resourcelist:
@@ -64,6 +86,11 @@ async def trackpieces(filename:str,resourcelist:list[str])->None:
     await writefile(filename,content)
     
 async def writefile(filename:str,pieces:list[bytes])-> None:
+    """Writes given pieces to a file
+        INPUT:
+        -filename (string) - name of file to write
+        -pieces (list[bytes]) - list of pieces to write
+        RETURNS NOTHING"""
     async with aiofiles.open(filename, "ab") as file:
         content:bytes = b""
         for piece in pieces:
