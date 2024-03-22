@@ -1,6 +1,6 @@
 ## Zadanie 1
 Używając modułów asyncio i aiofiles zaimplementuj metodę readAndSend(path:str,dstaddr:str,dstport:int)-> None, 
-która asynchronicznie przeczyta i prześle na podany w drugim parametrze adres i port z trzeciego parametru oraz metodę      receive(port:int)->str, która zwróci otrzymaną wiadomość.
+która asynchronicznie przeczyta i prześle na podany w drugim parametrze adres i port z trzeciego parametru oraz metodę receive(port:int)->str, która zwróci otrzymaną wiadomość.
 ## Zadanie 2
 Napisz funkcję createpieces(n), która asynchronicznie podzieli plik na n równych fragmentów pod względem rozmiaru w pamięci i zapisze je w osobnych plikach nazwanych piece{numer fragmentu}
 ## Zadanie 3
