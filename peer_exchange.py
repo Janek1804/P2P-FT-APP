@@ -1,42 +1,45 @@
-# TODO: Figure out how to get the proper broadcast and host ip addr., as 255.255.255.255 can fail (Much fun)
 # TODO: Add function for handling host ip change
 
-from ast import In
+import os
 import time
 import socket
 import asyncio
+import aiofiles
 
 from typing import Optional
 from asyncio import sleep as as_sleep
 from asyncio import CancelledError, wait_for, get_running_loop, open_connection
 
+from main import pcpath
+
 bcast_timer = 90
 dead_timer = 200
 host = socket.gethostbyname(socket.gethostname())
-msg_list = []
+bcast = "255.255.255.255"
 
 peers = {} # format: Address : [Last time heard, Resource list]
 
-async def listenPEX(bcast: str, PEX_queue: asyncio.Queue)-> None:
-    # TODO: Verify whether bcast is even needed
+#FIXME This does not hear anything, at least while using a single device
+async def listenPEX(PEX_queue: asyncio.Queue)-> None:
     """[!] Listens for PEX messages, WARNING: this function expects to be run on a separate thread
         INPUT:
-        - bcast (string) - broadcast ip address in string format
         - PEX_queue (queue) - asyncio queue to put received PEX messages
         RETURNS NOTHING"""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(('', 6771))
+    sock.bind(("", 6771))
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.setblocking(False)
     try:
         while True:
             data, addr = await get_running_loop().sock_recv(sock, 1024)
+            #print(data)
             PEX_queue.put_nowait((addr, bytes(data).decode(), time.time()))
             await as_sleep(0) # yielding control just in case something else is on the same thread
     except CancelledError:
         pass
     finally:
         sock.close()
+
 
 async def handlePEX(PEX_queue: asyncio.Queue) -> None:
     """ Handles received PEX messages
@@ -57,10 +60,17 @@ async def handlePEX(PEX_queue: asyncio.Queue) -> None:
     except CancelledError:
         return
 
-# TODO: FINISH THIS
+# TODO: Add checking for number of pieces
 async def getLocalFile(request: str) -> str:
-    request_list = request.split(":", 2) # [filename, piece, total pieces]
-    return ""
+    try:
+        request_list = request.split(":", 2) # [filename, piece, total pieces]
+        filepath = os.path.join(pcpath, (request_list[0]+request_list[1]))
+        if not os.path.isfile(filepath):
+            return ""
+        async with aiofiles.open(filepath, mode="r") as file:
+            return await file.read()
+    except CancelledError:
+        return ""
 
 
 async def handleRequests(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
@@ -110,14 +120,14 @@ async def listenTCP(sock: Optional[socket.socket] = None, port: int = 6771) -> N
         serv.close()
 
 
-async def advertise(resources: list, bcast: str) -> None:
+async def advertise(resources: list, bcast: str = "255.255.255.255") -> None:
     """Broadcasts its presence to other peers on LAN
         INPUT:
         - resources (list) - list of resources to be broadcast
-        - bcast (string) - broadcast ip address in string format
+        - bcast (string) [default: "255.255.255.255"] - broadcast ip address in string format
         RETURNS NOTHING"""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(('', 6771))
+    sock.bind((host, 6771))
     sock.connect((bcast, 6771))
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     sock.setblocking(False)
@@ -185,11 +195,8 @@ async def obtainFromPeer(resource: str, peer: str, port: int = 6771) -> bytes:
 async def selfTestOne():
     print("Running network self-test.")
     res_list = ["TESTING", "TEST"]
-    bcast = "192.168.2.255"
-    try:
-        await asyncio.wait_for(advertise(res_list, bcast), timeout = 60)            
-    except TimeoutError or CancelledError:
-        print("Ended advertising test")
+    tasks = [asyncio.create_task(advertise(res_list)), asyncio.create_task(listenPEX(asyncio.Queue()))]
+    await asyncio.gather(*tasks, return_exceptions=True)
 
 if __name__ == "__main__":
     asyncio.run(selfTestOne())
