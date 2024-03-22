@@ -12,8 +12,8 @@ use_color = True
 async def Autocomplete(text: str, possible: list[str]) -> int:
     """Tries to find a match for given incomplete string from given set of complete options.
         INPUT:
-        - text(str) - received input that needs to be completed
-        - possible (list[str]) - list of possible matches
+        - text (string) - received input that needs to be completed
+        - possible (list[string]) - list of possible matches
         RETURNS:
         - hit (int) - if 1 match was found: index of match, 
             otherwise: {-4: task cancelled; -3: not found, empty string; -2: not found; -1: multiple matches}"""
@@ -39,8 +39,8 @@ def colorprint(text: str, color: str) -> None:
     """Handles printing in colors (black, red, green, yellow, blue, magenta, cyan, white)
         Does not add line breaks.
         INPUT:
-        - text (str) - text to print in color
-        - color (str) - desired color's name
+        - text (string) - text to print in color
+        - color (string) - desired color's name
         RETURNS NOTHING"""
     colors = {
         "black": "\033[30m",
@@ -63,9 +63,9 @@ def colorprint(text: str, color: str) -> None:
 async def as_input(prompt: str = "") -> str:
     """Asynchronous input
         INPUT:
-        - prompt (str) - prompt to display for user
+        - prompt (string) - prompt to display for user
         RETURNS:
-        - user_input (str) - string of user input"""
+        - user_input (string) - string of user input"""
 
     loop = asyncio.get_event_loop()
     future = loop.create_future()

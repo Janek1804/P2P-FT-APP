@@ -1,6 +1,7 @@
 # TODO: Figure out how to get the proper broadcast and host ip addr., as 255.255.255.255 can fail (Much fun)
 # TODO: Add function for handling host ip change
 
+from ast import In
 import time
 import socket
 import asyncio
@@ -56,8 +57,12 @@ async def handlePEX(PEX_queue: asyncio.Queue) -> None:
     except CancelledError:
         return
 
+# TODO: FINISH THIS
+async def getLocalFile(request: str) -> str:
+    request_list = request.split(":", 2) # [filename, piece, total pieces]
+    return ""
 
-# TODO: Finish this
+
 async def handleRequests(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
     """[!] Handles TCP requests, WARNING: this function should only be run by the TCP server
         INPUT:
@@ -67,9 +72,12 @@ async def handleRequests(reader: asyncio.StreamReader, writer: asyncio.StreamWri
     try:
         try:
             request = await wait_for(reader.read(-1), timeout = 120)
-            request = request.decode().split(":", 2) # [filename, piece, total pieces]
-            # Check if resources present
-            # Reply: "RESOURCE_MISSING" / f"RESOURCE:{piece}"
+            request = request.decode()
+            file_contents = await getLocalFile(request)
+            if file_contents == "":
+                writer.write(f"RESOURCE_MISSING:{request}".encode())
+            else:
+                writer.write(f"CONTENT:{request};{file_contents}".encode())
         except TimeoutError:
             writer.close()
             await writer.wait_closed()
@@ -159,7 +167,10 @@ async def obtainFromPeer(resource: str, peer: str, port: int = 6771) -> bytes:
         writer.write(f"REQUEST:{resource}".encode())
         await writer.drain()
         try:
-            piece = await wait_for(reader.read(-1), timeout = 60)
+            data = await wait_for(reader.read(-1), timeout = 60)
+            data = data.decode()
+            if data.startswith("CONTENT:"):
+                piece = data.partition(";")[2].encode()
         except TimeoutError:
             pass
     except CancelledError:
