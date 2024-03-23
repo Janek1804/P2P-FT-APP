@@ -10,11 +10,10 @@ from typing import Optional
 from asyncio import sleep as as_sleep
 from asyncio import CancelledError, wait_for, get_running_loop, open_connection
 
-from main import pcpath
+import globals
 
 bcast_timer = 90
 dead_timer = 200
-host = socket.gethostbyname(socket.gethostname())
 
 peers = {} # format: Address : [Last time heard, Resource list]
 
@@ -53,7 +52,7 @@ async def handlePEX(PEX_queue: asyncio.Queue) -> None:
                 if msg[0].startswith("PEX-PEER"):
                     data = msg[0].partition(";")  # data[0] = f"PEX-PEER:{host}", data[2] = f"RESOURCES:{','.join(resources)}"
                     addr = data[0].replace("PEX-PEER:", "", 1)
-                    if addr != host:
+                    if addr != globals.host:
                         peers[addr] = [msg[1], data[2].replace("RESOURCES:", "", 1).split(",")]
             except CancelledError:
                 PEX_queue.put_nowait(msg)
@@ -66,7 +65,7 @@ async def handlePEX(PEX_queue: asyncio.Queue) -> None:
 async def getLocalFile(request: str) -> bytes:
     try:
         request_list = request.split(":", 2) # [filename, piece, total pieces]
-        filepath = os.path.join(pcpath, (request_list[0]+request_list[1]))
+        filepath = os.path.join(globals.pcpath, (request_list[0]+request_list[1]))
         if not os.path.isfile(filepath):
             return b""
         async with aiofiles.open(filepath, mode="br") as file:
@@ -129,12 +128,12 @@ async def advertise(resources: list, bcast: str = "255.255.255.255") -> None:
         - bcast (string) [default: "255.255.255.255"] - broadcast ip address in string format
         RETURNS NOTHING"""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((host, 6771))
+    sock.bind((globals.host, 6771))
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     sock.connect((bcast, 6771))
     sock.setblocking(False)
     loop = get_running_loop()
-    msg = f"PEX-PEER:{host};RESOURCES:{','.join(resources)}".encode()
+    msg = f"PEX-PEER:{globals.host};RESOURCES:{','.join(resources)}".encode()
     try:
         while True:
             next_bcast = time.time() + bcast_timer # next_bcast as specific time

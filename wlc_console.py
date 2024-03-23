@@ -3,13 +3,13 @@ import asyncio
 from asyncio import CancelledError
 from socket import gethostname, gethostbyname_ex
 
-from peer_exchange import host
+import globals
 
 
 use_color = True
 
 
-async def Autocomplete(text: str, possible: list[str]) -> int:
+async def autocomplete(text: str, possible: list[str]) -> int:
     """Tries to find a match for given incomplete string from given set of complete options.
         INPUT:
         - text (string) - received input that needs to be completed
@@ -78,7 +78,7 @@ async def as_input(prompt: str = "") -> str:
     return await future
 
 # TODO: Maybe let's give this application a name?
-async def Console() -> None:
+async def console() -> None:
     """Handles console and interactions with user
         INPUT ABSENT
         RETURNS NOTHING"""
@@ -99,13 +99,13 @@ async def Console() -> None:
         colorprint("[P2P APP NAME HERE]", "cyan")
         print("!")
         print("Autodetected IP address: ", end="")
-        colorprint(f"{host}\n", "cyan")
+        colorprint(f"{globals.host}\n", "cyan")
         print("If the above text appears weird, please use command: toggle_color")
         print("For list of commands, please use command: help")
         while True:
             user_input = (await as_input())
             cmd = user_input.lower().split()
-            cmd_id = await Autocomplete(cmd[0], cmd_list)
+            cmd_id = await autocomplete(cmd[0], cmd_list)
             cmd_text = ""
             if cmd_id >= 0:
                 cmd_text = cmd_list[cmd_id]
@@ -124,11 +124,11 @@ async def Console() -> None:
                         print("Off")
                 case "show_address":
                     print("Using IP address: ", end="")
-                    colorprint(f"{host}\n", "cyan")
+                    colorprint(f"{globals.host}\n", "cyan")
                 case "show_interfaces":
                     for addr in gethostbyname_ex(gethostname())[2]:
                         colorprint(addr, "cyan")
-                        if addr == host:
+                        if addr == globals.host:
                             colorprint("\t[BEING USED]", "green")
                         print()
 
@@ -138,4 +138,4 @@ async def Console() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(Console())
+    asyncio.run(console())

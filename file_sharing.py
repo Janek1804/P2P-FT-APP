@@ -1,7 +1,10 @@
-from peer_exchange import obtainFromPeer
-import aiofiles
 import asyncio
+import aiofiles
+
 from os import scandir
+
+from peer_exchange import obtainFromPeer
+
 shared = []; """Stores shared resources. resource format: <filename>:<piece_number>:<piece_quantity>"""
 async def shdir(path:str='shared',num_pieces:int=512,target:str='pieces') -> None:
     """Prepares all the files from specified directory to be transferred

@@ -1,6 +1,8 @@
-import aiofiles
-from bcoding import bdecode
 import asyncio
+import aiofiles
+
+from bcoding import bdecode
+
 class torrent:
     def __init__(self,torrent_dict) -> None:
         try:
