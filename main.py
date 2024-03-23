@@ -2,9 +2,8 @@ import socket
 import asyncio
 import aiofiles
 
-from math import e
-
 import globals
+
 from wlc_console import console
 from peer_exchange import runPEX
 from torrent_parser import read_torrent

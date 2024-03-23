@@ -2,8 +2,11 @@ import asyncio
 
 from asyncio import CancelledError
 from socket import gethostname, gethostbyname_ex
-from file_sharing import trackpieces
+
 import globals
+
+from file_sharing import trackpieces
+
 
 
 use_color = True
