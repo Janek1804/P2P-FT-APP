@@ -55,7 +55,7 @@ async def store_pieces(pieces:list[bytes],path:str)->None:
                 await file.write(piece)
     else:
         print("No pieces to write")
-#Assuming resource list element local format <Address>:<Port>:<Filename>:<Piece Number>:<Piece Quantity>
+#Assuming resource list element local format <Address>:<Filename>:<Piece Number>:<Piece Quantity>
 async def trackpieces(filename:str,resourcelist:list[str])->None:
     """Tracks pieces of file being obtained and stores the downloaded file
         INPUT:
@@ -81,7 +81,7 @@ async def trackpieces(filename:str,resourcelist:list[str])->None:
             res:str = ""
             for i in tmp[2:]:
                 res += i
-            received = await obtainFromPeer(res,tmp[0],int(tmp[1]))
+            received = await obtainFromPeer(res,tmp[0],6771)
             if received != b"":
                 content.insert(piecenum-1,received)
             else:

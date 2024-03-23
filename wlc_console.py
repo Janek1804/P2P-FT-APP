@@ -2,7 +2,7 @@ import asyncio
 
 from asyncio import CancelledError
 from socket import gethostname, gethostbyname_ex
-
+from file_sharing import trackpieces
 import globals
 
 
@@ -144,6 +144,24 @@ async def console() -> None:
                         if addr == globals.host:
                             colorprint("\t[BEING USED]", "green")
                         print()
+                case "download":
+                    if len(cmd) != 2:
+                        colorprint("Usage: download [Filename]\n", "red")
+                    else:
+                        filename:str = cmd[1]
+                        resources:list[str] = []
+                        piecenum:int = -1
+                        for res in globals.peers.keys():
+                            for s in globals.peers[res][2:]:
+                                if s.find(filename) != -1:
+                                    piecenum = int(s.split(":")[-1])
+                                    resources.append(f"{res}:{s}")
+                        if len(resources) == piecenum:
+                            await trackpieces(filename,resources)
+                        else:
+                            colorprint("Unable to obtain requested file\n", "red")
+
+
 
 
     except CancelledError:
