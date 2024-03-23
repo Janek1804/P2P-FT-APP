@@ -61,16 +61,16 @@ async def handlePEX(PEX_queue: asyncio.Queue) -> None:
         return
 
 # TODO: Add checking for number of pieces
-async def getLocalFile(request: str) -> str:
+async def getLocalFile(request: str) -> bytes:
     try:
         request_list = request.split(":", 2) # [filename, piece, total pieces]
         filepath = os.path.join(pcpath, (request_list[0]+request_list[1]))
         if not os.path.isfile(filepath):
-            return ""
-        async with aiofiles.open(filepath, mode="r") as file:
+            return b""
+        async with aiofiles.open(filepath, mode="br") as file:
             return await file.read()
     except CancelledError:
-        return ""
+        return b""
 
 
 async def handleRequests(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
