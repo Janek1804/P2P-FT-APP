@@ -87,7 +87,7 @@ async def handleRequests(reader: asyncio.StreamReader, writer: asyncio.StreamWri
             if file_contents == "":
                 writer.write(f"RESOURCE_MISSING:{request}".encode())
             else:
-                writer.write(f"CONTENT:{request};{file_contents}".encode())
+                writer.write(f"CONTENT:{request};".encode() + file_contents)
         except TimeoutError:
             writer.close()
             await writer.wait_closed()
