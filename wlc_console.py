@@ -125,6 +125,17 @@ async def console() -> None:
                         colorprint("On\n", "green")
                     else:
                         print("Off")
+                case "set_address":
+                    if len(cmd) != 2:
+                        colorprint("Usage: set_address [IP address]\n", "red")
+                    elif cmd[1] not in gethostbyname_ex(gethostname())[2]:
+                        colorprint("IP address must be of a valid interface, use show_interfaces to see all available\n", "red")
+                    else:
+                        globals.host = cmd[1]
+                        print("Setting address...")
+                        # TODO: call function to reset stuff on peer_exchange.py
+                        print("Now using address:  ", end="")
+                        colorprint(f"{globals.host}\n", "cyan")
                 case "show_address":
                     print("Using IP address: ", end="")
                     colorprint(f"{globals.host}\n", "cyan")

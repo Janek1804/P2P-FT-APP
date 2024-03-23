@@ -15,8 +15,6 @@ import globals
 bcast_timer = 90
 dead_timer = 200
 
-peers = {} # format: Address : [Last time heard, Resource list]
-
 
 async def listenPEX(PEX_queue: asyncio.Queue)-> None:
     """[!] Listens for PEX messages, WARNING: this function expects to be run on a separate thread
@@ -52,7 +50,7 @@ async def handlePEX(PEX_queue: asyncio.Queue) -> None:
                     data = msg[0].partition(";")  # data[0] = f"PEX-PEER:{host}", data[2] = f"RESOURCES:{','.join(resources)}"
                     addr = data[0].replace("PEX-PEER:", "", 1)
                     if addr != globals.host:
-                        peers[addr] = [msg[1], data[2].replace("RESOURCES:", "", 1).split(",")]
+                        globals.peers[addr] = [msg[1], data[2].replace("RESOURCES:", "", 1).split(",")]
             except CancelledError:
                 PEX_queue.put_nowait(msg)
             finally:
@@ -105,7 +103,7 @@ async def listenTCP(sock: Optional[socket.socket] = None, port: int = 6771, list
         INPUT:
         - sock (socket) [OPTIONAL] - TCP socket to listen at, if absent port is used instead
         - port (int) [default: 6771] - TCP port number to listen at, will be used only if sock is None
-        listen_addr (string) [default: ""] - IP address of the interface to listen at
+        - listen_addr (string) [default: ""] - IP address of the interface to listen at
         RETURNS NOTHING"""
     try:
         if socket is None:
@@ -153,9 +151,9 @@ async def verifyPeersLife() -> None:
         RETURNS NOTHING"""
     try:
         while True:
-            for entry in peers.keys():
-                if time.time() - peers[entry] > dead_timer:
-                    peers.pop(entry)
+            for entry in globals.peers.keys():
+                if time.time() - globals.peers[entry] > dead_timer:
+                    globals.peers.pop(entry)
             await as_sleep(bcast_timer)
     except CancelledError:
         return
