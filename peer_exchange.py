@@ -15,11 +15,10 @@ from main import pcpath
 bcast_timer = 90
 dead_timer = 200
 host = socket.gethostbyname(socket.gethostname())
-bcast = "255.255.255.255"
 
 peers = {} # format: Address : [Last time heard, Resource list]
 
-#FIXME This does not hear anything, at least while using a single device
+
 async def listenPEX(PEX_queue: asyncio.Queue)-> None:
     """[!] Listens for PEX messages, WARNING: this function expects to be run on a separate thread
         INPUT:
@@ -29,11 +28,12 @@ async def listenPEX(PEX_queue: asyncio.Queue)-> None:
     sock.bind(("", 6771))
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.setblocking(False)
+    loop = asyncio.get_running_loop()
     try:
         while True:
-            data, addr = await get_running_loop().sock_recv(sock, 1024)
-            #print(data)
-            PEX_queue.put_nowait((addr, bytes(data).decode(), time.time()))
+            data = await loop.sock_recv(sock, 1024)
+            PEX_queue.put_nowait((data.decode(), time.time()))
+            print((data.decode(), time.time()))
             await as_sleep(0) # yielding control just in case something else is on the same thread
     except CancelledError:
         pass
@@ -50,9 +50,11 @@ async def handlePEX(PEX_queue: asyncio.Queue) -> None:
         while True:
             msg = await PEX_queue.get()
             try:
-                if msg[1].startswith("PEX-PEER"):
-                    data = msg[1].partition(";")  # data[0] = f"PEX-PEER:{host}", data[2] = f"RESOURCES:{','.join(resources)}"
-                    peers[data[0].replace("PEX-PEER:", "", 1)] = [msg[2], data[2].replace("RESOURCES:", "", 1).split(",")]
+                if msg[0].startswith("PEX-PEER"):
+                    data = msg[0].partition(";")  # data[0] = f"PEX-PEER:{host}", data[2] = f"RESOURCES:{','.join(resources)}"
+                    addr = data[0].replace("PEX-PEER:", "", 1)
+                    if addr != host:
+                        peers[addr] = [msg[1], data[2].replace("RESOURCES:", "", 1).split(",")]
             except CancelledError:
                 PEX_queue.put_nowait(msg)
             finally:
@@ -128,8 +130,8 @@ async def advertise(resources: list, bcast: str = "255.255.255.255") -> None:
         RETURNS NOTHING"""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((host, 6771))
-    sock.connect((bcast, 6771))
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    sock.connect((bcast, 6771))
     sock.setblocking(False)
     loop = get_running_loop()
     msg = f"PEX-PEER:{host};RESOURCES:{','.join(resources)}".encode()
