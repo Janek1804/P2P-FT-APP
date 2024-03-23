@@ -132,8 +132,7 @@ async def console() -> None:
                         colorprint("IP address must be of a valid interface, use show_interfaces to see all available\n", "red")
                     else:
                         globals.host = cmd[1]
-                        print("Setting address...")
-                        # TODO: call function to reset stuff on peer_exchange.py
+                        globals.resetPEX.set()
                         print("Now using address:  ", end="")
                         colorprint(f"{globals.host}\n", "cyan")
                 case "show_address":

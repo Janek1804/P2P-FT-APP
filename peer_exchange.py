@@ -1,5 +1,3 @@
-# TODO: Add function for handling host ip change
-
 import os
 import time
 import socket
@@ -191,22 +189,57 @@ async def obtainFromPeer(resource: str, peer: str, port: int = 6771) -> bytes:
         await writer.wait_closed()
         return piece
 
+
 async def selfTestOne():
     print("Running network self-test.")
     res_list = ["TESTING", "TEST"]
     tasks = [asyncio.create_task(advertise(res_list)), asyncio.create_task(listenPEX(asyncio.Queue()))]
     await asyncio.gather(*tasks, return_exceptions=True)
 
-async def runPEX():
+
+async def resetWatch(tasks: list[asyncio.Task]) -> None:
+    """Watches globals.resetPEX and restarts PEX when it is set
+        INPUT:
+        - tasks (list[asyncio.Task]) - list of tasks to cancel when globals.resetPEX is set
+        RETURNS NOTHING"""
+    try:
+        await globals.resetPEX.wait()
+        globals.resetPEX.clear()
+        for task in tasks:
+            task.cancel()
+    except CancelledError:
+        return
+
+
+async def runPEX() -> None:
+    """Runs PEX functions
+        INPUT ABSENT
+        RETURNS NOTHING"""
     PEX_queue = asyncio.Queue()
-    tasks = [
-        asyncio.create_task(listenPEX(PEX_queue)),
-        asyncio.create_task(handlePEX(PEX_queue)),
-        asyncio.create_task(verifyPeersLife()),
-        asyncio.create_task(advertise(globals.resource_list)),
-        asyncio.create_task(listenTCP())
-    ]
-    await asyncio.gather(*tasks, return_exceptions=True)
+    tasks = []
+    rw_task = None
+    while True:
+        try:
+            tasks = [
+                asyncio.create_task(listenPEX(PEX_queue)),
+                asyncio.create_task(handlePEX(PEX_queue)),
+                asyncio.create_task(verifyPeersLife()),
+                asyncio.create_task(advertise(globals.resource_list)),
+                asyncio.create_task(listenTCP())
+            ]            
+        except CancelledError:
+            for task in tasks:
+                task.cancel()
+                return
+        try:
+            rw_task = asyncio.create_task(resetWatch(tasks))
+            await asyncio.gather(*tasks, return_exceptions=True)
+        except CancelledError:
+            if rw_task is not None:
+                rw_task.cancel()
+            for task in tasks:
+                task.cancel()
+                return
 
 if __name__ == "__main__":
     asyncio.run(selfTestOne())
