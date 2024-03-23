@@ -151,13 +151,14 @@ async def console() -> None:
                         filename:str = cmd[1]
                         resources:list[str] = []
                         piecenum:int = -1
-                        for res in globals.peers.keys():
-                            for s in globals.peers[res][2:]:
+                        for addr in globals.peers.keys():
+                            for s in globals.peers[addr][2:]:
                                 if s.find(filename) != -1:
                                     piecenum = int(s.split(":")[-1])
-                                    resources.append(f"{res}:{s}")
+                                    resources.append(f"{addr}:{s}")
                         if len(resources) == piecenum:
                             await trackpieces(filename,resources)
+                            colorprint("Finished downloading file {cmd[2]}\n", "green")
                         else:
                             colorprint("Unable to obtain requested file\n", "red")
 
