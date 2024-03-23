@@ -32,7 +32,6 @@ async def listenPEX(PEX_queue: asyncio.Queue)-> None:
         while True:
             data = await loop.sock_recv(sock, 1024)
             PEX_queue.put_nowait((data.decode(), time.time()))
-            print((data.decode(), time.time()))
             await as_sleep(0) # yielding control just in case something else is on the same thread
     except CancelledError:
         pass
@@ -101,15 +100,16 @@ async def handleRequests(reader: asyncio.StreamReader, writer: asyncio.StreamWri
         await writer.wait_closed()
 
 
-async def listenTCP(sock: Optional[socket.socket] = None, port: int = 6771) -> None:
+async def listenTCP(sock: Optional[socket.socket] = None, port: int = 6771, listen_addr:str = "") -> None:
     """[!] Listens for TCP requests on the specified port, WARNING: this function expects to be run on a separate thread
         INPUT:
         - sock (socket) [OPTIONAL] - TCP socket to listen at, if absent port is used instead
         - port (int) [default: 6771] - TCP port number to listen at, will be used only if sock is None
+        listen_addr (string) [default: ""] - IP address of the interface to listen at
         RETURNS NOTHING"""
     try:
         if socket is None:
-            serv = await asyncio.start_server(handleRequests, "127.0.0.1", port)
+            serv = await asyncio.start_server(handleRequests, listen_addr, port)
         else:
             serv = await asyncio.start_server(handleRequests, sock=sock)
     except CancelledError:
@@ -197,6 +197,17 @@ async def selfTestOne():
     print("Running network self-test.")
     res_list = ["TESTING", "TEST"]
     tasks = [asyncio.create_task(advertise(res_list)), asyncio.create_task(listenPEX(asyncio.Queue()))]
+    await asyncio.gather(*tasks, return_exceptions=True)
+
+async def runPEX():
+    PEX_queue = asyncio.Queue()
+    tasks = [
+        asyncio.create_task(listenPEX(PEX_queue)),
+        asyncio.create_task(handlePEX(PEX_queue)),
+        asyncio.create_task(verifyPeersLife()),
+        asyncio.create_task(advertise(globals.resource_list)),
+        asyncio.create_task(listenTCP())
+    ]
     await asyncio.gather(*tasks, return_exceptions=True)
 
 if __name__ == "__main__":

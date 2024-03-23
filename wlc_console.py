@@ -85,6 +85,7 @@ async def console() -> None:
     try:
         commands = {
             "help": "List all commands",
+            "exit": "Exits the program",
             "download": "Download file with name given after a space",
             "list_local": "List locally available files",
             "list_remote": "List downloadable files",
@@ -114,6 +115,8 @@ async def console() -> None:
                     for key, value in commands.items():
                         colorprint(f"{key:<{cmd_length}} ", "yellow")
                         print(f"- {value}")
+                case "exit":
+                    raise SystemExit
                 case "toggle_color":
                     global use_color
                     use_color = not use_color

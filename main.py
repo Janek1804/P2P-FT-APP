@@ -6,6 +6,7 @@ from math import e
 
 import globals
 from wlc_console import console
+from peer_exchange import runPEX
 from torrent_parser import read_torrent
 
 
@@ -26,6 +27,14 @@ def readconfig(path:str="FT.conf") -> None:
                 globals.pcpath = entry.strip().split("=",1)[1]
 
 
+async def main():
+    tasks = [
+        asyncio.create_task(console()),
+        asyncio.create_task(runPEX())
+    ]
+    await asyncio.gather(*tasks, return_exceptions=True)
+
+
 if __name__ == "__main__":
     readconfig()
-    asyncio.run(console())
+    asyncio.run(main())
