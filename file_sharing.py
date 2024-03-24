@@ -1,6 +1,6 @@
 import asyncio
 import aiofiles
-
+from globals import peers
 from os import scandir
 
 from peer_exchange import obtainFromPeer
@@ -14,12 +14,16 @@ async def shdir(path:str='shared',num_pieces:int=512,target:str='pieces') -> Non
         -target (string) - path to directory storing the pieces
         RETURNS NOTHING"""
     tmp = scandir(path)
-    for filename in tmp:
-        if filename.is_file():
-            pieces:list[bytes]= await create_pieces(f'{path}/{filename}',num_pieces)
-            await store_pieces(pieces,f'{target}/{filename}')
-        elif filename.is_dir():
-            await shdir(f'{path}/{filename}',num_pieces,target)
+    for file in tmp:
+        if file.is_file():
+            for peer in peers.keys():
+                for i in peers[peer]:
+                    if i.find(file.name) != -1:
+                        continue
+            pieces:list[bytes]= await create_pieces(f'{path}/{file.name}',num_pieces)
+            await store_pieces(pieces,f'{target}/{file.name}')
+        elif file.is_dir():
+            await shdir(f'{path}/{file.name}',num_pieces,target)
 
 async def create_pieces(filepath:str,num_pieces:int)->list[bytes]:
     """Creates pieces from specified file
