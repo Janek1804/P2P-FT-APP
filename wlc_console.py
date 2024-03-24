@@ -5,7 +5,7 @@ from socket import gethostname, gethostbyname_ex
 
 import globals
 
-from file_sharing import trackpieces
+from file_sharing import trackpieces,shdir
 
 
 

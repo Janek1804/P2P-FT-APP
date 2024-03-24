@@ -6,7 +6,7 @@ import globals
 
 from wlc_console import console
 from peer_exchange import runPEX
-from torrent_parser import read_torrent
+from file_sharing import updateLocalResources
 
 
 def readconfig(path:str="FT.conf") -> None:
@@ -29,7 +29,8 @@ def readconfig(path:str="FT.conf") -> None:
 async def main():
     tasks = [
         asyncio.create_task(console()),
-        asyncio.create_task(runPEX())
+        asyncio.create_task(runPEX()),
+        asyncio.create_task(updateLocalResources())
     ]
     await asyncio.gather(*tasks, return_exceptions=True)
 

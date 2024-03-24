@@ -1,11 +1,11 @@
 import asyncio
 import aiofiles
-from globals import peers
+from globals import peers,resource_list,shpath,pcpath, resetAnnouncementsPEX
 from os import scandir
 
 from peer_exchange import obtainFromPeer
 
-shared = []; """Stores shared resources. resource format: <filename>:<piece_number>:<piece_quantity>"""
+
 async def shdir(path:str='shared',num_pieces:int=512,target:str='pieces') -> None:
     """Prepares all the files from specified directory to be transferred
         INPUT:
@@ -41,8 +41,11 @@ async def create_pieces(filepath:str,num_pieces:int)->list[bytes]:
         print(piecesize)
         pieces:list[bytes] = [] 
         for i in range(0,filesize,piecesize):
+            current_piece = f"{name}:{i/piecesize+1}:{num_pieces}"
+            if current_piece in resource_list:
+                continue
+            resource_list.append(current_piece)
             pieces.append(content[i:i+piecesize])
-            shared.append(f"{name}:{int(i/piecesize+1)}:{num_pieces}")
         if filesize % num_pieces != 0:
             pieces.append(content[piecesize*(num_pieces-1):])
         return pieces
@@ -104,11 +107,17 @@ async def writefile(filename:str,pieces:list[bytes])-> None:
             content += piece
         await file.write(content)
 
+async def updateLocalResources()->None:
+    current = resource_list.copy()
+    await shdir(shpath,128,pcpath)
+    if resource_list != current:
+        resetAnnouncementsPEX.set()
+    await asyncio.sleep(600)
+
 if __name__ == "__main__":
     file="test.txt"
     pieces = asyncio.run(create_pieces(file,2))
     print(pieces)
-    print(shared)
     with open("aaa.txt",'ab') as f2:
         content = b""
         for piece in pieces:
