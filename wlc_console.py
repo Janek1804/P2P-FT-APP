@@ -138,12 +138,16 @@ async def console() -> None:
                         else:
                             colorprint("Unable to obtain requested file\n", "red")
                 case "list_local":
-                    # TODO: Implement listing local files
-                    pass
+                    res_list = sorted(set(map(lambda pieces_list: pieces_list.split(":")[0], globals.resource_list)))
+                    for res in res_list:
+                        colorprint(f"{res} \t", "yellow")
+                    if len(res_list) == 0:
+                        colorprint("No local files are being shared", "red")
+                    print()
                 case "list_remote":
-                    lists = list(map(lambda x: x[1][1], globals.peers.items()))
-                    res_list = sorted(set().union(*lists))
-                    # TODO: Verify resource_list format
+                    lists = list(map(lambda x: x[1][1], globals.peers.items()))  # get lists of filepieces from all peers
+                    pieces_list: list[str] = list(set().union(*lists)) # merge filepieces lists into one list
+                    res_list = sorted(set(map(lambda pieces_list: pieces_list.split(":")[0], pieces_list))) # get just the filename, remove duplicates, sort alphabetically
                     for res in res_list:
                         colorprint(f"{res} \t", "yellow")
                     if len(res_list) == 0:
