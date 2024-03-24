@@ -108,11 +108,15 @@ async def writefile(filename:str,pieces:list[bytes])-> None:
         await file.write(content)
 
 async def updateLocalResources()->None:
-    current = resource_list.copy()
-    await shdir(shpath,128,pcpath)
-    if resource_list != current:
-        resetAnnouncementsPEX.set()
-    await asyncio.sleep(600)
+    """Updates local resources
+        INPUT NOTHING
+        RETURNS NOTHING"""
+    while True:
+        current = resource_list.copy()
+        await shdir(shpath,128,pcpath)
+        if resource_list != current:
+            resetAnnouncementsPEX.set()
+        await asyncio.sleep(600)
 
 if __name__ == "__main__":
     file="test.txt"
