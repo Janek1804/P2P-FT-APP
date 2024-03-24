@@ -5,8 +5,7 @@ from socket import gethostname, gethostbyname_ex
 
 import globals
 
-from file_sharing import trackpieces,shdir
-
+from file_sharing import trackpieces, shdir
 
 
 use_color = True
@@ -107,7 +106,7 @@ async def console() -> None:
         colorprint(f"{globals.host}\n", "cyan")
         print("If the above text appears weird, please use command: toggle_color")
         print("For list of commands, please use command: help")
-        while True:
+        while globals.run:
             user_input = (await as_input())
             cmd = user_input.lower().split()
             cmd_id = await autocomplete(cmd[0], cmd_list)
@@ -120,6 +119,7 @@ async def console() -> None:
                         colorprint(f"{key:<{cmd_length}} ", "yellow")
                         print(f"- {value}")
                 case "exit":
+                    globals.run = False
                     raise SystemExit
                 case "download":
                     if len(cmd) != 2:

@@ -1,9 +1,12 @@
 import asyncio
 import aiofiles
-from globals import peers,resource_list,shpath,pcpath, resetAnnouncementsPEX
+
 from os import scandir
 
+import globals
+
 from peer_exchange import obtainFromPeer
+from globals import peers, resource_list, shpath, pcpath, resetAnnouncementsPEX
 
 
 async def shdir(path:str='shared',num_pieces:int=512,target:str='pieces') -> None:
@@ -111,12 +114,15 @@ async def updateLocalResources()->None:
     """Updates local resources
         INPUT NOTHING
         RETURNS NOTHING"""
-    while True:
-        current = resource_list.copy()
-        await shdir(shpath,128,pcpath)
-        if resource_list != current:
-            resetAnnouncementsPEX.set()
-        await asyncio.sleep(600)
+    try:
+        while globals.run:
+            current = resource_list.copy()
+            await shdir(shpath,128,pcpath)
+            if resource_list != current:
+                resetAnnouncementsPEX.set()
+            await asyncio.sleep(600)
+    except asyncio.CancelledError:
+        return
 
 if __name__ == "__main__":
     file="test.txt"

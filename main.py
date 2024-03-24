@@ -27,12 +27,17 @@ def readconfig(path:str="FT.conf") -> None:
 
 
 async def main():
-    tasks = [
-        asyncio.create_task(console()),
-        asyncio.create_task(runPEX()),
-        asyncio.create_task(updateLocalResources())
-    ]
-    await asyncio.gather(*tasks, return_exceptions=True)
+    tasks = []
+    try:
+        tasks = [
+            asyncio.create_task(console()),
+            asyncio.create_task(runPEX()),
+            asyncio.create_task(updateLocalResources())
+        ]
+        await asyncio.gather(*tasks, return_exceptions=True)
+    except asyncio.CancelledError:
+        for task in tasks:
+            task.cancel()
 
 
 if __name__ == "__main__":

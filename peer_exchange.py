@@ -25,7 +25,7 @@ async def listenPEX(PEX_queue: asyncio.Queue)-> None:
     sock.setblocking(False)
     loop = asyncio.get_running_loop()
     try:
-        while True:
+        while globals.run:
             data = await loop.sock_recv(sock, 1024)
             PEX_queue.put_nowait((data.decode(), time.time()))
             await as_sleep(0) # yielding control just in case something else is on the same thread
@@ -41,7 +41,7 @@ async def handlePEX(PEX_queue: asyncio.Queue) -> None:
         - PEX_queue (queue) - asyncio queue of received PEX messages
         RETURNS NOTHING"""
     try:
-        while True:
+        while globals.run:
             msg = await PEX_queue.get()
             try:
                 if msg[0].startswith("PEX-PEER"):
@@ -131,7 +131,7 @@ async def advertise(resources: list, bcast: str = "255.255.255.255") -> None:
     loop = get_running_loop()
     msg = f"PEX-PEER:{globals.host};RESOURCES:{','.join(resources)}".encode()
     try:
-        while True:
+        while globals.run:
             next_bcast = time.time() + bcast_timer # next_bcast as specific time
             await loop.sock_sendall(sock, msg)
             next_bcast = next_bcast - time.time() # next_bcast as delay
@@ -148,7 +148,7 @@ async def verifyPeersLife() -> None:
         INPUT ABSENT
         RETURNS NOTHING"""
     try:
-        while True:
+        while globals.run:
             for entry in globals.peers.keys():
                 if time.time() - globals.peers[entry] > dead_timer:
                     globals.peers.pop(entry)
@@ -219,15 +219,15 @@ async def runAdvert() -> None:
     advert = None
     watch = None
     try:
-        while True:
+        while globals.run:
             advert = asyncio.create_task(advertise(globals.resource_list))
             watch = asyncio.create_task(watchEvent([advert], globals.resetAnnouncementsPEX))
             await advert
     except CancelledError:
-        if advert is not None:
-            advert.cancel()
         if watch is not None:
             watch.cancel()
+        if advert is not None:
+            advert.cancel()
         return
 
 
@@ -239,7 +239,7 @@ async def runOther() -> None:
     watch = None
     PEX_queue = asyncio.Queue()
     try:
-        while True:
+        while globals.run:
             tasks = [
                 asyncio.create_task(listenPEX(PEX_queue)),
                 asyncio.create_task(handlePEX(PEX_queue)),
@@ -249,7 +249,7 @@ async def runOther() -> None:
             watch = asyncio.create_task(watchEvent(tasks, globals.resetPEX))
             await asyncio.gather(*tasks, return_exceptions=True)
     except CancelledError:
-        if watch is not None:
+        if watch is not None:            
             watch.cancel()
         for task in tasks:
             task.cancel()
@@ -259,11 +259,17 @@ async def runPEX() -> None:
     """Runs PEX functions
         INPUT ABSENT
         RETURNS NOTHING"""
-    tasks = [
-        asyncio.create_task(runAdvert()),
-        asyncio.create_task(runOther())
-    ]
-    await asyncio.gather(*tasks, return_exceptions=True)
+    tasks = []
+    try:
+        tasks = [
+            asyncio.create_task(runAdvert()),
+            asyncio.create_task(runOther())
+        ]
+        await asyncio.gather(*tasks, return_exceptions=True)
+    except CancelledError:
+        for task in tasks:
+            task.cancel()
+
 
 if __name__ == "__main__":
     asyncio.run(selfTestOne())

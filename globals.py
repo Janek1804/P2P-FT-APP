@@ -8,3 +8,4 @@ peers = {} # format: Address : [Last time heard, Resource list]
 resource_list = []
 resetPEX = asyncio.Event()
 resetAnnouncementsPEX = asyncio.Event()
+run = True
