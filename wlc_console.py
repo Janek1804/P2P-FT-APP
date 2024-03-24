@@ -95,7 +95,8 @@ async def console() -> None:
             "set_address": "Select IP address to use by this peer",
             "show_address": "Show IP address currently used by this peer",
             "show_interfaces": "Show IP addresses of all detected interfaces",
-            "toggle_color": "Enable/disable colors in terminal"
+            "toggle_color": "Enable/disable colors in terminal",
+            "update_shared": "Updates files being shared "
             }
         cmd_list = list(commands.keys())
         cmd_length = max(len(key) for key in commands.keys())
@@ -180,6 +181,9 @@ async def console() -> None:
                         colorprint("On\n", "green")
                     else:
                         print("Off")
+                case "update_shared":
+                    globals.resetAnnouncementsPEX.set()
+                    print("Announcements updated")
     except CancelledError:
         print("CONSOLE TASK CANCELLED")
 

@@ -197,49 +197,73 @@ async def selfTestOne():
     await asyncio.gather(*tasks, return_exceptions=True)
 
 
-async def resetWatch(tasks: list[asyncio.Task]) -> None:
-    """Watches globals.resetPEX and restarts PEX when it is set
+async def watchEvent(tasks: list[asyncio.Task], event: asyncio.Event) -> None:
+    """Watches specified event and cancels all task when it is set
         INPUT:
-        - tasks (list[asyncio.Task]) - list of tasks to cancel when globals.resetPEX is set
+        - tasks (list[asyncio.Task]) - list of tasks to cancel when event is set
+        - event (asyncio.Event) - event to watch
         RETURNS NOTHING"""
     try:
-        await globals.resetPEX.wait()
-        globals.resetPEX.clear()
+        await event.wait()
+        event.clear()
         for task in tasks:
             task.cancel()
     except CancelledError:
         return
 
 
-async def runPEX() -> None:
-    """Runs PEX functions
+async def runAdvert() -> None:
+    """Runs advertisement function
         INPUT ABSENT
         RETURNS NOTHING"""
-    PEX_queue = asyncio.Queue()
+    advert = None
+    watch = None
+    try:
+        while True:
+            advert = asyncio.create_task(advertise(globals.resource_list))
+            watch = asyncio.create_task(watchEvent([advert], globals.resetAnnouncementsPEX))
+            await advert
+    except CancelledError:
+        if advert is not None:
+            advert.cancel()
+        if watch is not None:
+            watch.cancel()
+        return
+
+
+async def runOther() -> None:
+    """Runs non-advertisement functions
+        INPUT ABSENT
+        RETURNS NOTHING"""
     tasks = []
-    rw_task = None
-    while True:
-        try:
+    watch = None
+    PEX_queue = asyncio.Queue()
+    try:
+        while True:
             tasks = [
                 asyncio.create_task(listenPEX(PEX_queue)),
                 asyncio.create_task(handlePEX(PEX_queue)),
                 asyncio.create_task(verifyPeersLife()),
-                asyncio.create_task(advertise(globals.resource_list)),
-                asyncio.create_task(listenTCP())
-            ]            
-        except CancelledError:
-            for task in tasks:
-                task.cancel()
-                return
-        try:
-            rw_task = asyncio.create_task(resetWatch(tasks))
+                asyncio.create_task(listenTCP()),
+            ]
+            watch = asyncio.create_task(watchEvent(tasks, globals.resetPEX))
             await asyncio.gather(*tasks, return_exceptions=True)
-        except CancelledError:
-            if rw_task is not None:
-                rw_task.cancel()
-            for task in tasks:
-                task.cancel()
-                return
+    except CancelledError:
+        if watch is not None:
+            watch.cancel()
+        for task in tasks:
+            task.cancel()
+        return
+
+async def runPEX() -> None:
+    """Runs PEX functions
+        INPUT ABSENT
+        RETURNS NOTHING"""
+    tasks = [
+        asyncio.create_task(runAdvert()),
+        asyncio.create_task(runOther())
+    ]
+    await asyncio.gather(*tasks, return_exceptions=True)
 
 if __name__ == "__main__":
     asyncio.run(selfTestOne())
