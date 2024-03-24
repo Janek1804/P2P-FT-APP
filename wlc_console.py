@@ -120,14 +120,35 @@ async def console() -> None:
                         print(f"- {value}")
                 case "exit":
                     raise SystemExit
-                case "toggle_color":
-                    global use_color
-                    use_color = not use_color
-                    print("Set color usage to: ", end="")
-                    if use_color:
-                        colorprint("On\n", "green")
+                case "download":
+                    if len(cmd) != 2:
+                        colorprint("Usage: download [Filename]\n", "red")
                     else:
-                        print("Off")
+                        filename:str = cmd[1]
+                        resources:list[str] = []
+                        piecenum:int = -1
+                        for addr in globals.peers.keys():
+                            for s in globals.peers[addr][2:]:
+                                if s.find(filename) != -1:
+                                    piecenum = int(s.split(":")[-1])
+                                    resources.append(f"{addr}:{s}")
+                        if len(resources) == piecenum:
+                            await trackpieces(filename,resources)
+                            colorprint("Finished downloading file {cmd[2]}\n", "green")
+                        else:
+                            colorprint("Unable to obtain requested file\n", "red")
+                case "list_local":
+                    # TODO: Implement listing local files
+                    pass
+                case "list_remote":
+                    lists = list(map(lambda x: x[1][1], globals.peers.items()))
+                    res_list = sorted(set().union(*lists))
+                    # TODO: Verify resource_list format
+                    for res in res_list:
+                        colorprint(f"{res} \t", "yellow")
+                    if len(res_list) == 0:
+                        colorprint("No remote files found", "red")
+                    print()
                 case "set_address":
                     if len(cmd) != 2:
                         colorprint("Usage: set_address [IP address]\n", "red")
@@ -147,27 +168,14 @@ async def console() -> None:
                         if addr == globals.host:
                             colorprint("\t[BEING USED]", "green")
                         print()
-                case "download":
-                    if len(cmd) != 2:
-                        colorprint("Usage: download [Filename]\n", "red")
+                case "toggle_color":
+                    global use_color
+                    use_color = not use_color
+                    print("Set color usage to: ", end="")
+                    if use_color:
+                        colorprint("On\n", "green")
                     else:
-                        filename:str = cmd[1]
-                        resources:list[str] = []
-                        piecenum:int = -1
-                        for addr in globals.peers.keys():
-                            for s in globals.peers[addr][2:]:
-                                if s.find(filename) != -1:
-                                    piecenum = int(s.split(":")[-1])
-                                    resources.append(f"{addr}:{s}")
-                        if len(resources) == piecenum:
-                            await trackpieces(filename,resources)
-                            colorprint("Finished downloading file {cmd[2]}\n", "green")
-                        else:
-                            colorprint("Unable to obtain requested file\n", "red")
-
-
-
-
+                        print("Off")
     except CancelledError:
         print("CONSOLE TASK CANCELLED")
 
