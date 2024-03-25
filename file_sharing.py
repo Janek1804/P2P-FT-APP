@@ -20,9 +20,12 @@ async def shdir(path:str='shared',num_pieces:int=512,target:str='pieces') -> Non
     for file in tmp:
         if file.is_file():
             for peer in peers.keys():
-                for i in peers[peer]:
-                    if i.find(file.name) != -1:
-                        continue
+                try:
+                    for i in peers[peer]:
+                        if i.find(file.name) != -1:
+                            continue
+                except KeyError:
+                    continue
             pieces:list[bytes]= await create_pieces(f'{path}/{file.name}',num_pieces)
             await store_pieces(pieces,f'{target}/{file.name}')
         elif file.is_dir():

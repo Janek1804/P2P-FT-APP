@@ -15,7 +15,7 @@ dead_timer = 200
 
 
 async def listenPEX(PEX_queue: asyncio.Queue)-> None:
-    """[!] Listens for PEX messages, WARNING: this function expects to be run on a separate thread
+    """Listens for PEX messages
         INPUT:
         - PEX_queue (queue) - asyncio queue to put received PEX messages
         RETURNS NOTHING"""
@@ -97,7 +97,7 @@ async def handleRequests(reader: asyncio.StreamReader, writer: asyncio.StreamWri
 
 
 async def listenTCP(sock: Optional[socket.socket] = None, port: int = 6771, listen_addr:str = "") -> None:
-    """[!] Listens for TCP requests on the specified port, WARNING: this function expects to be run on a separate thread
+    """Listens for TCP requests on the specified socket or port
         INPUT:
         - sock (socket) [OPTIONAL] - TCP socket to listen at, if absent port is used instead
         - port (int) [default: 6771] - TCP port number to listen at, will be used only if sock is None

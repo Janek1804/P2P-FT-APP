@@ -1,6 +1,4 @@
-import socket
 import asyncio
-import aiofiles
 
 import globals
 
@@ -26,7 +24,10 @@ def readconfig(path:str="FT.conf") -> None:
                 globals.pcpath = entry.strip().split("=",1)[1]
 
 
-async def main():
+async def main() -> None:
+    """Runs the program
+        INPUT ABSENT
+        RETURNS NOTHING"""
     tasks = []
     try:
         tasks = [
