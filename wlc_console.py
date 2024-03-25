@@ -189,7 +189,13 @@ async def console() -> None:
         print("CONSOLE TASK CANCELLED")
 def get_addresses()->list[str]:
     interfaces = netifaces.interfaces()
-    addresses = [iface[netifaces.AF_INET][0]['addr'] for iface in interfaces] 
+    addresses = [] 
+    for iface in interfaces:
+        try:
+            addresses.append(netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'])
+        except KeyError:
+            pass
+    return addresses
 
 
 if __name__ == "__main__":
