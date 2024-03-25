@@ -1,4 +1,5 @@
 import asyncio
+import netifaces
 
 from asyncio import CancelledError
 from socket import gethostname, gethostbyname_ex
@@ -157,7 +158,7 @@ async def console() -> None:
                 case "set_address":
                     if len(cmd) != 2:
                         colorprint("Usage: set_address [IP address]\n", "red")
-                    elif cmd[1] not in gethostbyname_ex(gethostname())[2]:
+                    elif cmd[1] not in get_addresses():
                         colorprint("IP address must be of a valid interface, use show_interfaces to see all available\n", "red")
                     else:
                         globals.host = cmd[1]
@@ -168,7 +169,7 @@ async def console() -> None:
                     print("Using IP address: ", end="")
                     colorprint(f"{globals.host}\n", "cyan")
                 case "show_interfaces":
-                    for addr in gethostbyname_ex(gethostname())[2]:
+                    for addr in get_addresses():
                         colorprint(addr, "cyan")
                         if addr == globals.host:
                             colorprint("\t[BEING USED]", "green")
@@ -186,6 +187,9 @@ async def console() -> None:
                     print("Announcements updated")
     except CancelledError:
         print("CONSOLE TASK CANCELLED")
+def get_addresses()->list[str]:
+    interfaces = netifaces.interfaces()
+    addresses = [iface[netifaces.AF_INET][0]['addr'] for iface in interfaces] 
 
 
 if __name__ == "__main__":
