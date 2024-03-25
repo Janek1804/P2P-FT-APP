@@ -12,6 +12,21 @@ from file_sharing import trackpieces, shdir
 use_color = True
 
 
+def getAddresses()->list[str]:
+    """Obtains IP addresses of all interfaces
+        INPUT ABSENT
+        RETURNS:
+        - addresses (list[str]) - list of IP addresses of all interfaces"""
+    interfaces = netifaces.interfaces()
+    addresses = [] 
+    for iface in interfaces:
+        try:
+            addresses.append(netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'])
+        except KeyError:
+            pass
+    return addresses
+
+
 async def autocomplete(text: str, possible: list[str]) -> int:
     """Tries to find a match for given incomplete string from given set of complete options.
         INPUT:
@@ -140,7 +155,7 @@ async def console() -> None:
                         else:
                             colorprint("Unable to obtain requested file\n", "red")
                 case "list_local":
-                    res_list = sorted(set(map(lambda pieces_list: pieces_list.split(":")[0], globals.resource_list)))
+                    res_list = sorted(set(map(lambda pieces_list: pieces_list.split(":")[0], globals.resource_list))) # see case "list_remote"
                     for res in res_list:
                         colorprint(f"{res} \t", "yellow")
                     if len(res_list) == 0:
@@ -158,7 +173,7 @@ async def console() -> None:
                 case "set_address":
                     if len(cmd) != 2:
                         colorprint("Usage: set_address [IP address]\n", "red")
-                    elif cmd[1] not in get_addresses():
+                    elif cmd[1] not in getAddresses():
                         colorprint("IP address must be of a valid interface, use show_interfaces to see all available\n", "red")
                     else:
                         globals.host = cmd[1]
@@ -169,7 +184,7 @@ async def console() -> None:
                     print("Using IP address: ", end="")
                     colorprint(f"{globals.host}\n", "cyan")
                 case "show_interfaces":
-                    for addr in get_addresses():
+                    for addr in getAddresses():
                         colorprint(addr, "cyan")
                         if addr == globals.host:
                             colorprint("\t[BEING USED]", "green")
@@ -187,15 +202,6 @@ async def console() -> None:
                     print("Announcements updated")
     except CancelledError:
         print("CONSOLE TASK CANCELLED")
-def get_addresses()->list[str]:
-    interfaces = netifaces.interfaces()
-    addresses = [] 
-    for iface in interfaces:
-        try:
-            addresses.append(netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'])
-        except KeyError:
-            pass
-    return addresses
 
 
 if __name__ == "__main__":
