@@ -6,25 +6,13 @@ from socket import gethostname, gethostbyname_ex
 
 import globals
 
+from globals import getAddresses
 from file_sharing import trackpieces, shdir
 
 
 use_color = True
 
 
-def getAddresses()->list[str]:
-    """Obtains IP addresses of all interfaces
-        INPUT ABSENT
-        RETURNS:
-        - addresses (list[str]) - list of IP addresses of all interfaces"""
-    interfaces = netifaces.interfaces()
-    addresses = [] 
-    for iface in interfaces:
-        try:
-            addresses.append(netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr'])
-        except KeyError:
-            pass
-    return addresses
 
 
 async def autocomplete(text: str, possible: list[str]) -> int:

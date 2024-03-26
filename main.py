@@ -1,8 +1,10 @@
 import asyncio
+import netifaces
 
 import globals
 
 from wlc_console import console
+from globals import getAddresses
 from peer_exchange import runPEX
 from file_sharing import updateLocalResources
 
@@ -43,4 +45,13 @@ async def main() -> None:
 
 if __name__ == "__main__":
     readconfig()
-    asyncio.run(main())
+    try:
+        globals.host = netifaces.ifaddresses(netifaces.gateways()['default'][netifaces.AF_INET][1])[netifaces.AF_INET][0]['addr']
+    except KeyError:
+        addr = getAddresses()
+        if len(addr) > 0:
+            globals.host = addr[0]
+    if globals.host != "":
+        asyncio.run(main())
+    else:
+        print("Unable to launch program: No IPv4 interfaces detected!")
