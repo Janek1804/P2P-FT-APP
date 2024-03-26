@@ -143,13 +143,19 @@ async def console() -> None:
                     else:
                         filename:str = cmd[1]
                         resources:list[str] = []
-                        piecenum:int = -1
+                        piecenum:int = 1
+                        print(globals.peers)
                         for addr in globals.peers.keys():
-                            for s in globals.peers[addr][2:]:
-                                if s.find(filename) != -1:
-                                    piecenum = int(s.split(":")[-1])
-                                    resources.append(f"{addr}:{s}")
-                        if len(resources) == piecenum:
+                            for l in globals.peers[addr][1:]:
+                                l.pop(-1)
+                                for s in l:
+                                    if s.find(filename) != -1:
+                                        print(s)
+                                        piecenum = int(s.split(":")[-1])
+                                        resources.append(f"{addr}:{s}")
+                        print("Resources",resources)
+                        if len(resources) >= piecenum:
+                            
                             await trackpieces(filename,resources)
                             colorprint("Finished downloading file {cmd[2]}\n", "green")
                         else:

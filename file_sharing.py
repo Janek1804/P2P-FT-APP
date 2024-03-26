@@ -75,27 +75,45 @@ async def trackpieces(filename:str,resourcelist:list[str])->None:
         -filename (string) - name of file to obtain
         -resourcelist (list[string]) -list storing resources shared by peers
         RETURNS NOTHING"""
+    print("aaaaa")
     filepieces:list[str] = []
     piecenums:list[int] = []
     for res in resourcelist:
+        print(res)
         if res.find(filename) != -1:
             filepieces.append(res)
-            piecenums.append(int(res.split(":")[-2]))
-    if set(piecenums) != set(range(1,int(filepieces[-1][-1])+1)):
+            print(res.split(":")[-2])
+            try:
+                piecenums.append(int(float(res.split(":")[-2])))
+            except ValueError:
+                print("Invalid piece number")
+            print("bbb")
+
+    print(range(1,int(filepieces[-1].split(":")[-1])+1))
+    if sorted(piecenums) != list(range(1,int(filepieces[-1].split(":")[-1])+1)):
         print("Desired file unavailable!")
         return
     content:list[bytes]=[]
     requested:list[int] = []
+    print(filepieces)
     for piece in filepieces:
-        piecenum:int = int(piece.split(":")[-2])
+        piecenum:int = int(float(piece.split(":")[-2]))
         if piecenum not in requested:
             requested.append(piecenum)
             tmp = piece.split(":")
-            res:str = ""
-            for i in tmp[2:]:
-                res += i
-            received = await obtainFromPeer(res,tmp[0],6771)
+            res:str = piece.removeprefix(tmp[0]+":")
+            print(res)
+            print(tmp[0])
+            print(f"requesting piece {piecenum}")
+            received=b""
+            try:
+                received = await obtainFromPeer(res,tmp[0],7050)
+            except:
+                print("aaa")
+            
+            print(received)
             if received != b"":
+                print(f"received piece {piecenum}")
                 content.insert(piecenum-1,received)
             else:
                 requested.remove(piecenum)
@@ -120,7 +138,7 @@ async def updateLocalResources()->None:
     try:
         while globals.run:
             current = resource_list.copy()
-            await shdir(shpath,128,pcpath)
+            await shdir(shpath,20,pcpath)
             if resource_list != current:
                 resetAnnouncementsPEX.set()
             await asyncio.sleep(600)

@@ -170,12 +170,16 @@ async def obtainFromPeer(resource: str, peer: str, port: int = 6771) -> bytes:
         reader, writer = await open_connection(peer, port=port)
     except CancelledError:
         return piece
+    print("wwwwww")
     try:
+        print("conn")
         writer.write(f"REQUEST:{resource}".encode())
+        print("sent req")
         await writer.drain()
         try:
             data = await wait_for(reader.read(-1), timeout = 60)
             data = data.decode()
+            print(data)
             if data.startswith("CONTENT:"):
                 piece = data.partition(";")[2].encode()
         except TimeoutError:
