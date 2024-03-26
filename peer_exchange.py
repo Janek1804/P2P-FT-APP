@@ -15,12 +15,12 @@ dead_timer = 200
 
 
 async def listenPEX(PEX_queue: asyncio.Queue)-> None:
-    """[!] Listens for PEX messages, WARNING: this function expects to be run on a separate thread
+    """Listens for PEX messages
         INPUT:
         - PEX_queue (queue) - asyncio queue to put received PEX messages
         RETURNS NOTHING"""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(("", 6771))
+    sock.bind(("", 7050))
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.setblocking(False)
     loop = asyncio.get_running_loop()
@@ -96,11 +96,11 @@ async def handleRequests(reader: asyncio.StreamReader, writer: asyncio.StreamWri
         await writer.wait_closed()
 
 
-async def listenTCP(sock: Optional[socket.socket] = None, port: int = 6771, listen_addr:str = "") -> None:
-    """[!] Listens for TCP requests on the specified port, WARNING: this function expects to be run on a separate thread
+async def listenTCP(sock: Optional[socket.socket] = None, port: int = 7050, listen_addr:str = "") -> None:
+    """Listens for TCP requests on the specified socket or port
         INPUT:
         - sock (socket) [OPTIONAL] - TCP socket to listen at, if absent port is used instead
-        - port (int) [default: 6771] - TCP port number to listen at, will be used only if sock is None
+        - port (int) [default: 7050] - TCP port number to listen at, will be used only if sock is None
         - listen_addr (string) [default: ""] - IP address of the interface to listen at
         RETURNS NOTHING"""
     try:
@@ -124,9 +124,9 @@ async def advertise(resources: list, bcast: str = "255.255.255.255") -> None:
         - bcast (string) [default: "255.255.255.255"] - broadcast ip address in string format
         RETURNS NOTHING"""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((globals.host, 6771))
+    sock.bind((globals.host, 7050))
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    sock.connect((bcast, 6771))
+    sock.connect((bcast, 7050))
     sock.setblocking(False)
     loop = get_running_loop()
     msg = f"PEX-PEER:{globals.host};RESOURCES:{','.join(resources)}".encode()
@@ -157,12 +157,12 @@ async def verifyPeersLife() -> None:
         return
 
 
-async def obtainFromPeer(resource: str, peer: str, port: int = 6771) -> bytes:
+async def obtainFromPeer(resource: str, peer: str, port: int = 7050) -> bytes:
     """Attempts to obtain specified resource from specified peer.
         INPUT:
         - resource (string) - resource to be requested
         - peer (string) - peer's ip address in string format
-        - port (int) [default: 6771] - destination port in int format
+        - port (int) [default: 7050] - destination port in int format
         RETURNS:
         - piece (bytes) - containing obtaines piece from peer, in the event of failure returns empty bytes object"""
     piece = b""

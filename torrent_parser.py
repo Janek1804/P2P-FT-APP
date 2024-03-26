@@ -17,7 +17,14 @@ class torrent:
             print("Invalid piece length!")
             return
         self.url_list:list[str] =  torrent_dict['info']['url-list']
+
+
 async def read_torrent(filename:str)->list[dict,bytes]:
+    """Reads a torrent file
+        INPUT:
+        - filename (string) - path to file to read
+        RETURNS:
+        - data (list[dict, bytes]) - list containing the file in a decoded and bytes formats"""
     async with aiofiles.open(file=filename,mode='br') as file :
         content:str = await file.read()
         decoded = bdecode(content)
@@ -27,6 +34,8 @@ async def read_torrent(filename:str)->list[dict,bytes]:
         data = [decoded,pieces]
         print(decoded)
         return data
+
+
 if __name__ == "__main__":
     filename = "archlinux-2024.03.01-x86_64.iso.torrent"
     asyncio.run(read_torrent(filename))
