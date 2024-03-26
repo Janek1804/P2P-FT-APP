@@ -94,7 +94,7 @@ async def trackpieces(filename:str,resourcelist:list[str])->None:
             res:str = ""
             for i in tmp[2:]:
                 res += i
-            received = await obtainFromPeer(res,tmp[0],6771)
+            received = await obtainFromPeer(res,tmp[0],7050)
             if received != b"":
                 content.insert(piecenum-1,received)
             else:
