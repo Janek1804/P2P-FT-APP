@@ -150,7 +150,7 @@ async def console() -> None:
                         colorprint(f"{res} \t", "yellow")
                     if len(res_list) == 0:
                         colorprint("No local files are being shared", "red")
-                    print()
+                    print(globals.resource_list)
                 case "list_remote":
                     lists = list(map(lambda x: x[1][1], globals.peers.items()))  # get lists of filepieces from all peers
                     pieces_list: list[str] = list(set().union(*lists)) # merge filepieces lists into one list
