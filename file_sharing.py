@@ -47,7 +47,7 @@ async def create_pieces(filepath:str,num_pieces:int)->list[bytes]:
         print(piecesize)
         pieces:list[bytes] = [] 
         for i in range(0,filesize,piecesize):
-            current_piece = f"{name}:{i/piecesize+1}:{num_pieces}"
+            current_piece = f"{name}:{int(i//piecesize+1)}:{num_pieces}"
             if current_piece in resource_list:
                 continue
             resource_list.append(current_piece)
