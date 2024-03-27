@@ -96,12 +96,7 @@ async def trackpieces(filename:str,resourcelist:list[str])->None:
             res:str = piece.removeprefix(tmp[0]+":")
             print(f"requesting piece {piecenum}")
             received=b""
-            try:
-                received = await obtainFromPeer(res,tmp[0],7050)
-            except Exception as e:
-                print(e) # WinError 1225 expected for now
-            
-            print(received)
+            received = await obtainFromPeer(res,tmp[0],7050)
             if received != b"":
                 print(f"received piece {piecenum}")
                 content.insert(piecenum-1,received)

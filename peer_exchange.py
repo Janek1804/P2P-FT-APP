@@ -61,7 +61,6 @@ async def getLocalFile(request: str) -> bytes:
     try:
         request_list = request.split(":", 2) # [filename, piece, total pieces]
         filepath = os.path.join(globals.pcpath, (request_list[0]+request_list[1]))
-        print(filepath)
         if not os.path.isfile(filepath):
             return b""
         async with aiofiles.open(filepath, mode="br") as file:
@@ -76,16 +75,11 @@ async def handleRequests(reader: asyncio.StreamReader, writer: asyncio.StreamWri
         - reader (asyncio.StreamReader) - incoming message reader
         - writer (asyncio.StreamWriter) - message writer
         RETURNS NOTHING"""
-    print("A")
     try:
         try:
-            print("B")
             request = await wait_for(reader.readuntil(b";"), timeout = 120)
-            print("C")
             request = request.decode().replace("REQUEST:", "")
-            print(request)
             file_contents = await getLocalFile(request)
-            print(file_contents)
             if file_contents == b"":
                 writer.write(f"RESOURCE_MISSING:{request}".encode())
             else:
@@ -174,23 +168,22 @@ async def obtainFromPeer(resource: str, peer: str, port: int = 7050) -> bytes:
     piece = b""
     try:
         reader, writer = await open_connection(peer, port=port)
+    except ConnectionError:
+        return b""
     except CancelledError:
-        return piece
+        return b""
     try:
         writer.write(f"REQUEST:{resource};".encode())
         await writer.drain()
         try:
-            print("A")
             data = await wait_for(reader.read(-1), timeout = 60)
-            print(data)
             data = data.decode()
-            print(data)
             if data.startswith("CONTENT:"):
-                print(data.partition(";"))
                 piece = data.partition(";")[2].encode()
         except TimeoutError:
-            print("OOF")
             pass
+    except ConnectionError:
+        return b""
     except CancelledError:
         await writer.drain()
         writer.write(f"CANCEL_REQUEST:{resource}".encode())
