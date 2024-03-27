@@ -83,7 +83,7 @@ async def as_input(prompt: str = "") -> str:
     await loop.run_in_executor(None, on_input)
     return await future
 
-# TODO: Maybe let's give this application a name?
+
 async def console() -> None:
     """Handles console and interactions with user
         INPUT ABSENT
@@ -104,7 +104,7 @@ async def console() -> None:
         cmd_list = list(commands.keys())
         cmd_length = max(len(key) for key in commands.keys())
         print("Welcome to ", end="")
-        colorprint("[P2P APP NAME HERE]", "cyan")
+        colorprint("QT-Share", "cyan")
         print("!")
         print("Autodetected IP address: ", end="")
         colorprint(f"{globals.host}\n", "cyan")
@@ -132,20 +132,16 @@ async def console() -> None:
                         filename:str = cmd[1]
                         resources:list[str] = []
                         piecenum:int = 1
-                        print(globals.peers)
                         for addr in globals.peers.keys():
                             for l in globals.peers[addr][1:]:
                                 l.pop(-1)
                                 for s in l:
                                     if s.find(filename) != -1:
-                                        print(s)
                                         piecenum = int(s.split(":")[-1])
                                         resources.append(f"{addr}:{s}")
-                        print("Resources",resources)
                         if len(resources) >= piecenum:
-                            
                             await trackpieces(filename,resources)
-                            colorprint("Finished downloading file {cmd[2]}\n", "green")
+                            colorprint(f"Finished downloading file {cmd[2]}\n", "green")
                         else:
                             colorprint("Unable to obtain requested file\n", "red")
                 case "list_local":

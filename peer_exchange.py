@@ -177,7 +177,7 @@ async def obtainFromPeer(resource: str, peer: str, port: int = 7050) -> bytes:
     except CancelledError:
         return piece
     try:
-        writer.write(f"REQUEST:{resource}".encode())
+        writer.write(f"REQUEST:{resource};".encode())
         await writer.drain()
         try:
             print("A")

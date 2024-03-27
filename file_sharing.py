@@ -42,9 +42,7 @@ async def create_pieces(filepath:str,num_pieces:int)->list[bytes]:
         content:bytes = await file.read()
         filesize:int = len(content)
         name:str = filepath.split("/")[-1]
-        print(filesize)
         piecesize:int = filesize//num_pieces
-        print(piecesize)
         pieces:list[bytes] = [] 
         for i in range(0,filesize,piecesize):
             current_piece = f"{name}:{int(i//piecesize+1)}:{num_pieces}"
@@ -75,41 +73,33 @@ async def trackpieces(filename:str,resourcelist:list[str])->None:
         -filename (string) - name of file to obtain
         -resourcelist (list[string]) -list storing resources shared by peers
         RETURNS NOTHING"""
-    print("aaaaa")
     filepieces:list[str] = []
     piecenums:list[int] = []
     for res in resourcelist:
-        print(res)
         if res.find(filename) != -1:
             filepieces.append(res)
-            print(res.split(":")[-2])
             try:
                 piecenums.append(int(float(res.split(":")[-2])))
             except ValueError:
                 print("Invalid piece number")
-            print("bbb")
 
-    print(range(1,int(filepieces[-1].split(":")[-1])+1))
     if sorted(piecenums) != list(range(1,int(filepieces[-1].split(":")[-1])+1)):
         print("Desired file unavailable!")
         return
     content:list[bytes]=[]
     requested:list[int] = []
-    print(filepieces)
     for piece in filepieces:
         piecenum:int = int(float(piece.split(":")[-2]))
         if piecenum not in requested:
             requested.append(piecenum)
             tmp = piece.split(":")
             res:str = piece.removeprefix(tmp[0]+":")
-            print(res)
-            print(tmp[0])
             print(f"requesting piece {piecenum}")
             received=b""
             try:
                 received = await obtainFromPeer(res,tmp[0],7050)
-            except:
-                print("aaa")
+            except Exception as e:
+                print(e) # WinError 1225 expected for now
             
             print(received)
             if received != b"":
