@@ -44,14 +44,13 @@ async def create_pieces(filepath:str,num_pieces:int)->list[bytes]:
         name:str = filepath.split("/")[-1]
         piecesize:int = filesize//num_pieces
         pieces:list[bytes] = [] 
-        for i in range(0,filesize,piecesize):
-            current_piece = f"{name}:{int(i//piecesize+1)}:{num_pieces}"
+        for i in range(num_pieces-1):
+            current_piece = f"{name}:{i+1}:{num_pieces}"
             if current_piece in resource_list:
                 continue
             resource_list.append(current_piece)
-            pieces.append(content[i:i+piecesize])
-        if filesize % num_pieces != 0:
-            pieces.append(content[piecesize*(num_pieces-1):])
+            pieces.append(content[i*piecesize:(i+1)*piecesize])
+        pieces.append(content[piecesize*(num_pieces-1):])
         return pieces
 async def store_pieces(pieces:list[bytes],path:str)->None:
     """Writes given pieces to a file

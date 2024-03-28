@@ -4,6 +4,7 @@ import netifaces
 import globals
 
 from wlc_console import console
+from serve import init
 from globals import getAddresses
 from peer_exchange import runPEX
 from file_sharing import updateLocalResources
@@ -35,7 +36,8 @@ async def main() -> None:
         tasks = [
             asyncio.create_task(console()),
             asyncio.create_task(runPEX()),
-            asyncio.create_task(updateLocalResources())
+            asyncio.create_task(updateLocalResources()),
+            asyncio.create_task(init())
         ]
         await asyncio.gather(*tasks, return_exceptions=True)
     except asyncio.CancelledError:
