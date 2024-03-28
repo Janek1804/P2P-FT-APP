@@ -77,8 +77,8 @@ async def handleRequests(reader: asyncio.StreamReader, writer: asyncio.StreamWri
         RETURNS NOTHING"""
     try:
         try:
-            request = await wait_for(reader.read(-1), timeout = 120)
-            request = request.decode()
+            request = await wait_for(reader.readuntil(b";"), timeout = 120)
+            request = request.decode().replace("REQUEST:", "")
             file_contents = await getLocalFile(request)
             if file_contents == b"":
                 writer.write(f"RESOURCE_MISSING:{request}".encode())
@@ -104,7 +104,7 @@ async def listenTCP(sock: Optional[socket.socket] = None, port: int = 7050, list
         - listen_addr (string) [default: ""] - IP address of the interface to listen at
         RETURNS NOTHING"""
     try:
-        if socket is None:
+        if sock is None:
             serv = await asyncio.start_server(handleRequests, listen_addr, port)
         else:
             serv = await asyncio.start_server(handleRequests, sock=sock)
@@ -168,22 +168,22 @@ async def obtainFromPeer(resource: str, peer: str, port: int = 7050) -> bytes:
     piece = b""
     try:
         reader, writer = await open_connection(peer, port=port)
+    except ConnectionError:
+        return b""
     except CancelledError:
-        return piece
-    print("wwwwww")
+        return b""
     try:
-        print("conn")
-        writer.write(f"REQUEST:{resource}".encode())
-        print("sent req")
+        writer.write(f"REQUEST:{resource};".encode())
         await writer.drain()
         try:
             data = await wait_for(reader.read(-1), timeout = 60)
             data = data.decode()
-            print(data)
             if data.startswith("CONTENT:"):
                 piece = data.partition(";")[2].encode()
         except TimeoutError:
             pass
+    except ConnectionError:
+        return b""
     except CancelledError:
         await writer.drain()
         writer.write(f"CANCEL_REQUEST:{resource}".encode())
@@ -192,7 +192,6 @@ async def obtainFromPeer(resource: str, peer: str, port: int = 7050) -> bytes:
         writer.close()
         await writer.wait_closed()
         return piece
-
 
 async def selfTestOne():
     print("Running network self-test.")
