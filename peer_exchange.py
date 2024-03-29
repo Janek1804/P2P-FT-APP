@@ -20,10 +20,27 @@ async def listenPEX(PEX_queue: asyncio.Queue)-> None:
         INPUT:
         - PEX_queue (queue) - asyncio queue to put received PEX messages
         RETURNS NOTHING"""
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(("", 7050))
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.setblocking(False)
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    except CancelledError:
+        return
+    except ConnectionError:
+        print("ERROR: Unable to start listening for advertisements. Download unavailable")
+        globals.sharing_only = True
+        globals.new_issue.set()
+        return
+    try:
+        sock.bind(("", 7050))
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.setblocking(False)
+    except CancelledError:
+        sock.close()
+        return
+    except ConnectionError:
+        print("ERROR: Unable to start listening for advertisements. Download unavailable")
+        globals.sharing_only = True
+        globals.new_issue.set()
+        return
     loop = asyncio.get_running_loop()
     try:
         while globals.run:
@@ -101,6 +118,8 @@ async def handleRequests(reader: asyncio.StreamReader, writer: asyncio.StreamWri
             return        
     except CancelledError:
         pass
+    except ConnectionError:
+        return
     finally:
         await writer.drain()
         writer.close()
@@ -121,11 +140,21 @@ async def listenTCP(sock: Optional[socket.socket] = None, port: int = 7050, list
             serv = await asyncio.start_server(handleRequests, sock=sock)
     except CancelledError:
         return
+    except ConnectionError:
+        print("WARNING: Could not start sharing server. Only downloading available.")
+        globals.download_only = True
+        globals.new_issue.set()
+        return
     try:
         async with serv:
             await serv.serve_forever()
     except CancelledError:
         serv.close()
+    except ConnectionError:
+        print("ERROR: Sharing server failed unexpectedly.")
+        globals.download_only = True
+        globals.new_issue.set()
+        return
 
 
 async def advertise(resources: list, bcast: str = "255.255.255.255") -> None:
@@ -134,11 +163,28 @@ async def advertise(resources: list, bcast: str = "255.255.255.255") -> None:
         - resources (list) - list of resources to be broadcast
         - bcast (string) [default: "255.255.255.255"] - broadcast ip address in string format
         RETURNS NOTHING"""
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((globals.host, 7050))
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    sock.connect((bcast, 7050))
-    sock.setblocking(False)
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    except ConnectionError:
+        print("WARNING: Could not start sharing server. Only downloading available.")
+        globals.download_only = True
+        globals.new_issue.set()
+        return
+    except CancelledError:
+        return
+    try:
+        sock.bind((globals.host, 7050))
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        sock.connect((bcast, 7050))
+        sock.setblocking(False)
+    except ConnectionError:
+        print("WARNING: Could not start sharing server. Only downloading available.")
+        globals.download_only = True
+        globals.new_issue.set()
+        return
+    except CancelledError:        
+        sock.close()
+        return
     loop = get_running_loop()
     msg = f"PEX-PEER:{globals.host};RESOURCES:{','.join(resources)}".encode()
     try:
@@ -150,6 +196,8 @@ async def advertise(resources: list, bcast: str = "255.255.255.255") -> None:
                 await as_sleep(next_bcast)
     except CancelledError:
         pass
+    except ConnectionError:
+        return
     finally:
         sock.close()
 

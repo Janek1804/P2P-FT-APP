@@ -9,6 +9,9 @@ resource_list = []
 resetPEX = asyncio.Event()
 resetAnnouncementsPEX = asyncio.Event()
 run = True
+download_only = False
+sharing_only = False
+new_issue = asyncio.Event()
 
 def getAddresses()->list[str]:
     """Obtains IP addresses of all interfaces

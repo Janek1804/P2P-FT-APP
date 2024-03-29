@@ -1,6 +1,8 @@
 import asyncio
 import netifaces
 
+from asyncio import CancelledError
+
 import globals
 
 from wlc_console import console
@@ -27,11 +29,29 @@ def readconfig(path:str="FT.conf") -> None:
                 globals.pcpath = entry.strip().split("=",1)[1]
 
 
+async def networkWatch(tasks: list[asyncio.Task]):
+    """Verifies that at least one half of network interactions remain operational
+        INPUT:
+        - tasks (list[asyncio.Task]) - list of tasks to cancel when network interactions fail
+        RETURNS NOTHING"""
+    event = globals.new_issue
+    try:
+        await event.wait()
+        event.clear()
+        if globals.download_only and globals.sharing_only:
+            for task in tasks:
+                task.cancel()
+            print("FATAL: Neither downloading nor sharing is available. Exiting.")
+            raise SystemExit
+    except CancelledError:
+        return
+
 async def main() -> None:
     """Runs the program
         INPUT ABSENT
         RETURNS NOTHING"""
     tasks = []
+    network_watch_task = None
     try:
         tasks = [
             asyncio.create_task(console()),
@@ -39,8 +59,11 @@ async def main() -> None:
             asyncio.create_task(updateLocalResources()),
             asyncio.create_task(init())
         ]
+        network_watch_task = asyncio.create_task(networkWatch(tasks))
         await asyncio.gather(*tasks, return_exceptions=True)
     except asyncio.CancelledError:
+        if network_watch_task is not None:
+            network_watch_task.cancel()
         for task in tasks:
             task.cancel()
 
