@@ -209,7 +209,7 @@ async def verifyPeersLife() -> None:
     try:
         while globals.run:
             for entry in globals.peers.keys():
-                if time.time() - globals.peers[entry] > dead_timer:
+                if time.time() - globals.peers[entry][0] > dead_timer:
                     globals.peers.pop(entry)
             await as_sleep(bcast_timer)
     except CancelledError:
