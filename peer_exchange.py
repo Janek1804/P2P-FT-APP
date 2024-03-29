@@ -3,7 +3,7 @@ import time
 import socket
 import asyncio
 import aiofiles
-from aiohttp import ClientSession 
+from aiohttp import ClientSession, ClientTimeout 
 
 from typing import Optional
 from asyncio import sleep as as_sleep
@@ -52,14 +52,24 @@ async def listenPEX(PEX_queue: asyncio.Queue)-> None:
     finally:
         sock.close()
 
-async def request_resource(addr:str,port:int,file:str=""):
-    async with ClientSession() as session:
+async def request_resource(addr:str,port:int,file:str="")->list[str]:
+    """Requests resources from HTTP server
+        WARNING: may raise ClientConnectionError
+        INPUT:
+        -addr (string) - ip address of a HTTP server
+        -port (int) - port on which server is listening
+        -file (string) - name of file to request; if unset requests all files
+        RETURNS:
+        -resource (list[string]) - list of resource strings of requested file"""
+    timeout= ClientTimeout(total=10)
+    async with ClientSession(timeout=timeout) as session:
         url:str = f"http://{addr}:{port}/{file}"
         print(url)
         async with session.get(url) as response:
-            resource = await response.text()
+            resource = await response.json()
             print(resource)
             return resource
+
 
 
 
