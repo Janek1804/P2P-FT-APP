@@ -51,6 +51,7 @@ async def create_pieces(filepath:str,num_pieces:int)->list[bytes]:
             resource_list.append(current_piece)
             pieces.append(content[i*piecesize:(i+1)*piecesize])
         pieces.append(content[piecesize*(num_pieces-1):])
+        resource_list.append(f"{name}:{num_pieces}:{num_pieces}")
         return pieces
 async def store_pieces(pieces:list[bytes],path:str)->None:
     """Writes given pieces to a file
