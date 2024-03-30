@@ -1,4 +1,5 @@
 import asyncio
+from itertools import cycle
 import netifaces
 
 from asyncio import CancelledError
@@ -126,10 +127,14 @@ async def console() -> None:
                     globals.run = False
                     raise SystemExit
                 case "download":
-                    if len(cmd) != 2:
-                        colorprint("Usage: download [Filename]\n", "red")
-                    else:
-                        filename:str = cmd[1]
+                    
+                    async def download(filename, download_finished) -> bool:
+                        """Runs the download
+                            INPUT:
+                            - filename (string) - item to be downloaded
+                            - download_finished (asyncio.Event) - event to set when finished
+                            RETURNS:
+                            - download_possible (bool) - indictation whether download succeeded"""
                         resources:list[str] = []
                         piecenum:int = 1
                         async with globals.peers_lock:
@@ -140,10 +145,42 @@ async def console() -> None:
                                         if s.find(filename) != -1:
                                             piecenum = int(s.split(":")[-1])
                                             resources.append(f"{addr}:{s}")
-                        if len(resources) >= piecenum:
+                        download_possible = len(resources) >= piecenum
+                        if download_possible:
                             await trackpieces(filename,resources)
+                        download_finished.set()
+                        return download_possible
+
+                    async def animation(download_finished) -> None:
+                        """Displays downloading animation
+                            INPUT:
+                            - download_finished (asyncio.Event) - event that will be set when finished
+                            RETURNS NOTHING"""
+                        frames = cycle(r'-\|/-\|/')
+                        while not download_finished.is_set():
+                            frame = next(frames)
+                            print('\rDownloading... ', frame, sep='', end='')
+                            await asyncio.sleep(0.1)
+                            if download_finished.is_set():
+                                break
+                            await asyncio.sleep(0.1)
+                        print('\rDownloading... ', sep='', end='')
+                        return
+                    
+                    if len(cmd) != 2:
+                        colorprint("Usage: download [Filename]\n", "red")
+                    else:
+                        filename:str = cmd[1]
+                        download_finished = asyncio.Event()
+                        download_successful, _ = await asyncio.gather(
+                            download(filename, download_finished),
+                            animation(download_finished)
+                        )
+                        if download_successful:
+                            colorprint("DONE\n", "green")
                             colorprint(f"Finished downloading file {cmd[2]}\n", "green")
                         else:
+                            colorprint("FAIL\n", "red")
                             colorprint("Unable to obtain requested file\n", "red")
                 case "list_local":
                     async with globals.resource_list_lock:
