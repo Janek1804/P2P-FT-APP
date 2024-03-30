@@ -135,37 +135,43 @@ async def console() -> None:
                             - download_finished (asyncio.Event) - event to set when finished
                             RETURNS:
                             - download_possible (bool) - indictation whether download succeeded"""
-                        resources:list[str] = []
-                        piecenum:int = 1
-                        async with globals.peers_lock:
-                            for addr in globals.peers.keys():
-                                for l in globals.peers[addr][1:]:
-                                    l.pop(-1)
-                                    for s in l:
-                                        if s.find(filename) != -1:
-                                            piecenum = int(s.split(":")[-1])
-                                            resources.append(f"{addr}:{s}")
-                        download_possible = len(resources) >= piecenum
-                        if download_possible:
-                            await trackpieces(filename,resources)
-                        download_finished.set()
-                        return download_possible
+                        try:
+                            resources:list[str] = []
+                            piecenum:int = 1
+                            async with globals.peers_lock:
+                                for addr in globals.peers.keys():
+                                    for l in globals.peers[addr][1:]:
+                                        l.pop(-1)
+                                        for s in l:
+                                            if s.find(filename) != -1:
+                                                piecenum = int(s.split(":")[-1])
+                                                resources.append(f"{addr}:{s}")
+                            download_possible = len(resources) >= piecenum
+                            if download_possible:
+                                await trackpieces(filename,resources)
+                            download_finished.set()
+                            return download_possible
+                        except CancelledError:
+                            return False
 
                     async def animation(download_finished) -> None:
                         """Displays downloading animation
                             INPUT:
                             - download_finished (asyncio.Event) - event that will be set when finished
                             RETURNS NOTHING"""
-                        frames = cycle(r'-\|/-\|/')
-                        while not download_finished.is_set():
-                            frame = next(frames)
-                            print('\rDownloading... ', frame, sep='', end='')
-                            await asyncio.sleep(0.1)
-                            if download_finished.is_set():
-                                break
-                            await asyncio.sleep(0.1)
-                        print('\rDownloading... ', sep='', end='')
-                        return
+                        try:
+                            frames = cycle(r'-\|/-\|/')
+                            while not download_finished.is_set():
+                                frame = next(frames)
+                                print('\rDownloading... ', frame, sep='', end='')
+                                await asyncio.sleep(0.1)
+                                if download_finished.is_set():
+                                    break
+                                await asyncio.sleep(0.1)
+                            print('\rDownloading... ', sep='', end='')
+                            return
+                        except CancelledError:
+                            return                        
                     
                     if len(cmd) != 2:
                         colorprint("Usage: download [Filename]\n", "red")
@@ -231,7 +237,8 @@ async def console() -> None:
                     globals.resetAnnouncementsPEX.set()
                     print("Announcements updated")
     except CancelledError:
-        print("CONSOLE TASK CANCELLED")
+        globals.run = False
+        raise SystemExit
 
 
 if __name__ == "__main__":

@@ -48,7 +48,8 @@ async def listenPEX(PEX_queue: asyncio.Queue)-> None:
             PEX_queue.put_nowait((data.decode(), time.time()))
             await as_sleep(0) # yielding control just in case something else is on the same thread
     except CancelledError:
-        pass
+        sock.close()
+        return
     finally:
         sock.close()
 
@@ -128,7 +129,9 @@ async def handleRequests(reader: asyncio.StreamReader, writer: asyncio.StreamWri
             await writer.wait_closed()
             return        
     except CancelledError:
-        pass
+        writer.close()
+        await writer.wait_closed()
+        return
     except ConnectionError:
         return
     finally:
@@ -206,7 +209,8 @@ async def advertise(resources: list, bcast: str = "255.255.255.255") -> None:
             if next_bcast >= 0:
                 await as_sleep(next_bcast)
     except CancelledError:
-        pass
+        sock.close()
+        return
     except ConnectionError:
         return
     finally:
