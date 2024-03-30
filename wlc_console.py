@@ -160,17 +160,23 @@ async def console() -> None:
                             - download_finished (asyncio.Event) - event that will be set when finished
                             RETURNS NOTHING"""
                         try:
+                            if use_color:
+                                print('\033[?25l', end='') # Hide cursor
                             frames = cycle(r'-\|/-\|/')
                             while not download_finished.is_set():
                                 frame = next(frames)
-                                print('\rDownloading... ', frame, sep='', end='')
+                                print('\rDownloading... ', frame, sep='', end='', flush=True)
                                 await asyncio.sleep(0.1)
                                 if download_finished.is_set():
                                     break
                                 await asyncio.sleep(0.1)
-                            print('\rDownloading... ', sep='', end='')
+                            print('\rDownloading... ', sep='', end='', flush=True)
+                            if use_color:
+                                print('\033[?25h', end='') # Show cursor again
                             return
                         except CancelledError:
+                            if use_color:
+                                print('\033[?25h', end='') # Show cursor again
                             return                        
                     
                     if len(cmd) != 2:
