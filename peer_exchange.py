@@ -3,7 +3,7 @@ import time
 import socket
 import asyncio
 import aiofiles
-from aiohttp import ClientSession, ClientTimeout 
+from aiohttp import ClientConnectionError, ClientSession, ClientTimeout 
 
 from typing import Optional
 from asyncio import sleep as as_sleep
@@ -53,13 +53,12 @@ async def listenPEX(PEX_queue: asyncio.Queue)-> None:
     finally:
         sock.close()
 
-async def request_resource(addr:str,port:int,file:str="")->list[str]:
-    """Requests resources from HTTP server
-        WARNING: may raise ClientConnectionError
+async def request_resource(addr: str, port: int, file: str="")->list[str]:
+    """[!] Requests resources from HTTP server, WARNING: may raise ClientConnectionError
         INPUT:
         -addr (string) - ip address of a HTTP server
         -port (int) - port on which server is listening
-        -file (string) - name of file to request; if unset requests all files
+        -file (string) [default: ""] - name of file to request; if set to empty string requests all files
         RETURNS:
         -resource (list[string]) - list of resource strings of requested file"""
     timeout= ClientTimeout(total=10)
@@ -84,11 +83,37 @@ async def handlePEX(PEX_queue: asyncio.Queue) -> None:
             msg = await PEX_queue.get()
             try:
                 if msg[0].startswith("PEX-PEER"):
-                    data = msg[0].partition(";")  # data[0] = f"PEX-PEER:{host}", data[2] = f"RESOURCES:{','.join(resources)}"
+                    data = msg[0].split(";")  # [0] PEX-PEER:{host_addr} [1] HTTP:{http_port} [2] UPDATE (may be absent)
                     addr = data[0].replace("PEX-PEER:", "", 1)
+                    port = int(data[1].replace("HTTP:", "", 1))
                     if addr != globals.host:
-                        async with globals.peers_lock:
-                            globals.peers[addr] = [msg[1], data[2].replace("RESOURCES:", "", 1).split(",")]
+                        if len(data) > 1:
+                            if data[2] == "UPDATE": # Get all on peer
+                                try:
+                                    res_list = await request_resource(addr, port)
+                                    async with globals.peers_lock:
+                                        globals.peers[addr] = [msg[1], res_list, 1]
+                                except ClientConnectionError:
+                                    async with globals.peers_lock:
+                                        globals.peers[addr] = [msg[1], [], 0] # Try again soon
+                            else:
+                                async with globals.peers_lock:
+                                    if addr in globals.peers.keys():
+                                        times = globals.peers[addr][2]
+                                    else:
+                                        times = 0
+                                if times == 0 or times >= 10: # Get or update all on peer
+                                    try:
+                                        res_list = await request_resource(addr, port)
+                                        async with globals.peers_lock:
+                                            globals.peers[addr] = [msg[1], res_list, 1]
+                                    except ClientConnectionError:
+                                        async with globals.peers_lock:
+                                            globals.peers[addr] = [msg[1], [], 1]
+                                else: # Update last time heard and times heard only on peer
+                                    async with globals.peers_lock:
+                                        globals.peers[addr][0] = msg[1]
+                                        globals.peers[addr][2] += 1
             except CancelledError:
                 PEX_queue.put_nowait(msg)
             finally:
@@ -171,11 +196,12 @@ async def listenTCP(sock: Optional[socket.socket] = None, port: int = 7050, list
         return
 
 
-async def advertise(resources: list, bcast: str = "255.255.255.255") -> None:
+async def advertise(resources: list, bcast: str = "255.255.255.255", http_port: int = 8080) -> None:
     """Broadcasts its presence to other peers on LAN
         INPUT:
         - resources (list) - list of resources to be broadcast
         - bcast (string) [default: "255.255.255.255"] - broadcast ip address in string format
+        - http_port (int) [default: 8080] - port number of local HTTP server
         RETURNS NOTHING"""
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -199,15 +225,17 @@ async def advertise(resources: list, bcast: str = "255.255.255.255") -> None:
     except CancelledError:        
         sock.close()
         return
-    loop = get_running_loop()
-    msg = f"PEX-PEER:{globals.host};RESOURCES:{','.join(resources)}".encode()
     try:
+        loop = get_running_loop()
+        msg = f"PEX-PEER:{globals.host};HTTP:{http_port}".encode()
+        await loop.sock_sendall(sock, msg + ";UPDATE".encode())
+        next_bcast = bcast_timer
         while globals.run:
-            next_bcast = time.time() + bcast_timer # next_bcast as specific time
-            await loop.sock_sendall(sock, msg)
-            next_bcast = next_bcast - time.time() # next_bcast as delay
             if next_bcast >= 0:
                 await as_sleep(next_bcast)
+            next_bcast: float = time.time() + bcast_timer # next_bcast as specific time
+            await loop.sock_sendall(sock, msg)
+            next_bcast = next_bcast - time.time() # next_bcast as delay
     except CancelledError:
         sock.close()
         return
