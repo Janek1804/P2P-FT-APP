@@ -178,7 +178,7 @@ async def console() -> None:
                         )
                         if download_successful:
                             colorprint("DONE\n", "green")
-                            colorprint(f"Finished downloading file {cmd[2]}\n", "green")
+                            colorprint(f"Finished downloading file {filename}\n", "green")
                         else:
                             colorprint("FAIL\n", "red")
                             colorprint("Unable to obtain requested file\n", "red")
