@@ -86,7 +86,8 @@ async def handlePEX(PEX_queue: asyncio.Queue) -> None:
                     data = msg[0].partition(";")  # data[0] = f"PEX-PEER:{host}", data[2] = f"RESOURCES:{','.join(resources)}"
                     addr = data[0].replace("PEX-PEER:", "", 1)
                     if addr != globals.host:
-                        globals.peers[addr] = [msg[1], data[2].replace("RESOURCES:", "", 1).split(",")]
+                        async with globals.peers_lock:
+                            globals.peers[addr] = [msg[1], data[2].replace("RESOURCES:", "", 1).split(",")]
             except CancelledError:
                 PEX_queue.put_nowait(msg)
             finally:
@@ -218,9 +219,10 @@ async def verifyPeersLife() -> None:
         RETURNS NOTHING"""
     try:
         while globals.run:
-            for entry in globals.peers.keys():
-                if time.time() - globals.peers[entry][0] > dead_timer:
-                    globals.peers.pop(entry)
+            async with globals.peers_lock:
+                for entry in globals.peers.keys():
+                    if time.time() - globals.peers[entry][0] > dead_timer:
+                        globals.peers.pop(entry)
             await as_sleep(bcast_timer)
     except CancelledError:
         return

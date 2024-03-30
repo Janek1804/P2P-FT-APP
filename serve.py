@@ -1,5 +1,5 @@
 from aiohttp import web
-from globals import resource_list
+from globals import resource_list, resource_list_lock
 from asyncio import CancelledError
 
 routes = web.RouteTableDef()
@@ -10,9 +10,10 @@ async def get_all(request):
 
 async def get_file(request):
     file_list = []
-    for res in resource_list:
-        if res.find(request.match_info['name']) != -1:
-            file_list.append(res)
+    async with resource_list_lock:
+        for res in resource_list:
+            if res.find(request.match_info['name']) != -1:
+                file_list.append(res)
     return web.json_response(file_list)
 
 async def init():

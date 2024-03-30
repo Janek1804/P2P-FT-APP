@@ -19,13 +19,14 @@ async def shdir(path:str='shared',num_pieces:int=512,target:str='pieces') -> Non
     tmp = scandir(path)
     for file in tmp:
         if file.is_file():
-            for peer in peers.keys():
-                try:
-                    for i in peers[peer]:
-                        if i.find(file.name) != -1:
-                            continue
-                except KeyError:
-                    continue
+            async with globals.peers_lock:
+                for peer in peers.keys():
+                    try:
+                        for i in peers[peer]:
+                            if i.find(file.name) != -1:
+                                continue
+                    except KeyError:
+                        continue
             pieces:list[bytes]= await create_pieces(f'{path}/{file.name}',num_pieces)
             await store_pieces(pieces,f'{target}/{file.name}')
         elif file.is_dir():
@@ -46,12 +47,14 @@ async def create_pieces(filepath:str,num_pieces:int)->list[bytes]:
         pieces:list[bytes] = [] 
         for i in range(num_pieces-1):
             current_piece = f"{name}:{i+1}:{num_pieces}"
-            if current_piece in resource_list:
-                continue
-            resource_list.append(current_piece)
+            async with globals.resource_list_lock:
+                if current_piece in resource_list:
+                    continue
+                resource_list.append(current_piece)
             pieces.append(content[i*piecesize:(i+1)*piecesize])
         pieces.append(content[piecesize*(num_pieces-1):])
-        resource_list.append(f"{name}:{num_pieces}:{num_pieces}")
+        async with globals.resource_list_lock:
+            resource_list.append(f"{name}:{num_pieces}:{num_pieces}")
         return pieces
 async def store_pieces(pieces:list[bytes],path:str)->None:
     """Writes given pieces to a file
@@ -122,10 +125,12 @@ async def updateLocalResources()->None:
         RETURNS NOTHING"""
     try:
         while globals.run:
-            current = resource_list.copy()
+            async with globals.resource_list_lock:
+                current = resource_list.copy()
             await shdir(shpath,20,pcpath)
-            if resource_list != current:
-                resetAnnouncementsPEX.set()
+            async with globals.resource_list_lock:
+                if resource_list != current:
+                    resetAnnouncementsPEX.set()
             await asyncio.sleep(600)
     except asyncio.CancelledError:
         return

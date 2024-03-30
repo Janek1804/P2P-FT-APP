@@ -132,27 +132,30 @@ async def console() -> None:
                         filename:str = cmd[1]
                         resources:list[str] = []
                         piecenum:int = 1
-                        for addr in globals.peers.keys():
-                            for l in globals.peers[addr][1:]:
-                                l.pop(-1)
-                                for s in l:
-                                    if s.find(filename) != -1:
-                                        piecenum = int(s.split(":")[-1])
-                                        resources.append(f"{addr}:{s}")
+                        async with globals.peers_lock:
+                            for addr in globals.peers.keys():
+                                for l in globals.peers[addr][1:]:
+                                    l.pop(-1)
+                                    for s in l:
+                                        if s.find(filename) != -1:
+                                            piecenum = int(s.split(":")[-1])
+                                            resources.append(f"{addr}:{s}")
                         if len(resources) >= piecenum:
                             await trackpieces(filename,resources)
                             colorprint(f"Finished downloading file {cmd[2]}\n", "green")
                         else:
                             colorprint("Unable to obtain requested file\n", "red")
                 case "list_local":
-                    res_list = sorted(set(map(lambda pieces_list: pieces_list.split(":")[0], globals.resource_list))) # see case "list_remote"
+                    async with globals.resource_list_lock:
+                        res_list = sorted(set(map(lambda pieces_list: pieces_list.split(":")[0], globals.resource_list))) # see case "list_remote"
                     for res in res_list:
                         colorprint(f"{res} \t", "yellow")
                     if len(res_list) == 0:
                         colorprint("No local files are being shared", "red")
                     print()
                 case "list_remote":
-                    lists = list(map(lambda x: x[1][1], globals.peers.items()))  # get lists of filepieces from all peers
+                    async with globals.resource_list_lock:
+                        lists = list(map(lambda x: x[1][1], globals.peers.items()))  # get lists of filepieces from all peers
                     pieces_list: list[str] = list(set().union(*lists)) # merge filepieces lists into one list
                     res_list = sorted(set(map(lambda pieces_list: pieces_list.split(":")[0], pieces_list))) # get just the filename, remove duplicates, sort alphabetically
                     for res in res_list:
