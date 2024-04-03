@@ -1,19 +1,12 @@
-## P2P Application for sharing files in LAN environment.
+## About
+QT-Share is a P2P application for sharing files in LAN environment.
 
-## TODO:
-<ul>   
-<li>event loop</li>
-<li>peer exchange protocol</li>
-<li>file torrenting</li>
-<li>documentation</li>
+## Peer Exchange Protocol and Network Transmissions
+<ul>
+<li> Peer discovery operates using IPv4 local broadcasts targeting UDP port 7050 every 90 seconds. </li>
+<li> File information is exchanged using HTTP on port 8080. </li>
+<li> Files are transferred using TCP (port 7050)</li>
 </ul>
 
-## Peer Exchange Protocol
-Peer advertisement- wanted resources- owned resources
-    -fragment name-address and port
-PEX messages are exchanged on port 7050.
-
 ## File Sharing
-shared_files.conf contains path to shared directory
-
-
+FT.conf is used to specify directories of shared files and their pieces.

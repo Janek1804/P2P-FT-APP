@@ -4,7 +4,9 @@ import netifaces
 shpath:str = "shared"
 pcpath:str = "pieces"
 host = ""
-peers = {} # format: Address : [Last time heard, Resource list]
+peers_lock = asyncio.Lock()
+peers = {} # format: Address : [Last time heard, Resource list, Times heard counter]
+resource_list_lock = asyncio.Lock()
 resource_list = []
 resetPEX = asyncio.Event()
 resetAnnouncementsPEX = asyncio.Event()

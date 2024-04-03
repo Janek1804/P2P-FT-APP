@@ -1,4 +1,5 @@
 import asyncio
+from itertools import cycle
 import netifaces
 
 from asyncio import CancelledError
@@ -126,33 +127,84 @@ async def console() -> None:
                     globals.run = False
                     raise SystemExit
                 case "download":
+                    
+                    async def download(filename, download_finished) -> bool:
+                        """Runs the download
+                            INPUT:
+                            - filename (string) - item to be downloaded
+                            - download_finished (asyncio.Event) - event to set when finished
+                            RETURNS:
+                            - download_possible (bool) - indictation whether download succeeded"""
+                        try:
+                            resources:list[str] = []
+                            piecenum:int = 1
+                            async with globals.peers_lock:
+                                for addr in globals.peers.keys():
+                                    for l in globals.peers[addr][1:]:
+                                        l.pop(-1)
+                                        for s in l:
+                                            if s.find(filename) != -1:
+                                                piecenum = int(s.split(":")[-1])
+                                                resources.append(f"{addr}:{s}")
+                            download_possible = len(resources) >= piecenum
+                            if download_possible:
+                                await trackpieces(filename,resources)
+                            download_finished.set()
+                            return download_possible
+                        except CancelledError:
+                            return False
+
+                    async def animation(download_finished) -> None:
+                        """Displays downloading animation
+                            INPUT:
+                            - download_finished (asyncio.Event) - event that will be set when finished
+                            RETURNS NOTHING"""
+                        try:
+                            if use_color:
+                                print('\033[?25l', end='') # Hide cursor
+                            frames = cycle(r'-\|/-\|/')
+                            while not download_finished.is_set():
+                                frame = next(frames)
+                                print('\rDownloading... ', frame, sep='', end='', flush=True)
+                                await asyncio.sleep(0.1)
+                                if download_finished.is_set():
+                                    break
+                                await asyncio.sleep(0.1)
+                            print('\rDownloading... ', sep='', end='', flush=True)
+                            if use_color:
+                                print('\033[?25h', end='') # Show cursor again
+                            return
+                        except CancelledError:
+                            if use_color:
+                                print('\033[?25h', end='') # Show cursor again
+                            return                        
+                    
                     if len(cmd) != 2:
                         colorprint("Usage: download [Filename]\n", "red")
                     else:
                         filename:str = cmd[1]
-                        resources:list[str] = []
-                        piecenum:int = 1
-                        for addr in globals.peers.keys():
-                            for l in globals.peers[addr][1:]:
-                                l.pop(-1)
-                                for s in l:
-                                    if s.find(filename) != -1:
-                                        piecenum = int(s.split(":")[-1])
-                                        resources.append(f"{addr}:{s}")
-                        if len(resources) >= piecenum:
-                            await trackpieces(filename,resources)
-                            colorprint(f"Finished downloading file {cmd[2]}\n", "green")
+                        download_finished = asyncio.Event()
+                        download_successful, _ = await asyncio.gather(
+                            download(filename, download_finished),
+                            animation(download_finished)
+                        )
+                        if download_successful:
+                            colorprint("DONE\n", "green")
+                            colorprint(f"Finished downloading file {filename}\n", "green")
                         else:
+                            colorprint("FAIL\n", "red")
                             colorprint("Unable to obtain requested file\n", "red")
                 case "list_local":
-                    res_list = sorted(set(map(lambda pieces_list: pieces_list.split(":")[0], globals.resource_list))) # see case "list_remote"
+                    async with globals.resource_list_lock:
+                        res_list = sorted(set(map(lambda pieces_list: pieces_list.split(":")[0], globals.resource_list))) # see case "list_remote"
                     for res in res_list:
                         colorprint(f"{res} \t", "yellow")
                     if len(res_list) == 0:
                         colorprint("No local files are being shared", "red")
                     print()
                 case "list_remote":
-                    lists = list(map(lambda x: x[1][1], globals.peers.items()))  # get lists of filepieces from all peers
+                    async with globals.resource_list_lock:
+                        lists = list(map(lambda x: x[1][1], globals.peers.items()))  # get lists of filepieces from all peers
                     pieces_list: list[str] = list(set().union(*lists)) # merge filepieces lists into one list
                     res_list = sorted(set(map(lambda pieces_list: pieces_list.split(":")[0], pieces_list))) # get just the filename, remove duplicates, sort alphabetically
                     for res in res_list:
@@ -191,7 +243,8 @@ async def console() -> None:
                     globals.resetAnnouncementsPEX.set()
                     print("Announcements updated")
     except CancelledError:
-        print("CONSOLE TASK CANCELLED")
+        globals.run = False
+        raise SystemExit
 
 
 if __name__ == "__main__":
