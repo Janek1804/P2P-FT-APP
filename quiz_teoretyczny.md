@@ -11,21 +11,29 @@
     - [ ] Wywołać jak zwykłą funkcję
 
 3. Jaki będzie rezultat działania następującego kodu?
-    async def main():
-        await asyncio.create_task(so)
-        await asyncio.sleep(1)
-        await asyncio.create_task(
+   async def test(a):
+       print(a)
+   async def main():
+       await asyncio.create_task(test(1))
+       await asyncio.sleep(1)
+       await asyncio.create_task(test(2))
+       await asyncio.create_task(test(3))
+       await asyncio.sleep(1)
+       await asyncio.create_task(test(4))
     
-    - 
-
-4. W jaki sposób można nawiązać połączenie TCP używając asyncio?
+    - [X] 1 2 3 4
+    - [ ] 1 3 2 4
+    - [ ] 1 4 3 2
+    - [ ] 1 2 4 3
+    - [ ] Wystąpi błąd
+5. W jaki sposób można nawiązać połączenie TCP używając asyncio?
     - [ ] za pomocą start_client
     - [X] za pomocą open_connection
     - [ ] za pomocą fetch
     - [ ] asyncio na to nie pozwala
 
-5. W jaki sposób możemy asynchronicznie odczytać plik?
+6. W jaki sposób możemy asynchronicznie odczytać plik?
     - [ ] za pomocą asyncio.aread
-    - [ ] za pomocą aiofiles.open i metody read
-    - [ ] za pomocą aiofiles.open i metody readlines
+    - [X] za pomocą aiofiles.open i metody read
+    - [X] za pomocą aiofiles.open i metody readlines
     - [ ] za pomocą obiektu asyncio.StreamReader
