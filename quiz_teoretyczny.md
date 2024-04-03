@@ -6,7 +6,7 @@
 
 2. W jaki sposób możemy uruchomić funkcję asynchroniczną za pomocą asyncio?
     - [ ] Za pomocą mechanizmu promise
-    - [X] Za pomocą metody run
+    - [X] Za pomocą funkcji run
     - [X] Za pomocą słowa kluczowego await
     - [ ] Wywołać jak zwykłą funkcję
 
