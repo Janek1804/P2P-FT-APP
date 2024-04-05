@@ -1,6 +1,9 @@
 from aiohttp import web
-from globals import resource_list, resource_list_lock
 from asyncio import CancelledError
+
+import globals
+
+from globals import resource_list, resource_list_lock
 
 routes = web.RouteTableDef()
 
@@ -22,7 +25,7 @@ async def init():
     app.add_routes([web.get('/', get_all),web.get('/{name}',get_file)])
     await runner.setup()
     try:
-        site = web.TCPSite(runner,'localhost',8080)
+        site = web.TCPSite(runner,globals.host ,8080)
         await site.start()
     except CancelledError:
         await runner.cleanup()

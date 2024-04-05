@@ -143,7 +143,7 @@ async def handleRequests(reader: asyncio.StreamReader, writer: asyncio.StreamWri
     try:
         try:
             request = await wait_for(reader.readuntil(b";"), timeout = 120)
-            request = request.decode().replace("REQUEST:", "")
+            request = request.decode().replace("REQUEST:", "").replace(";", "")
             file_contents = await getLocalFile(request)
             if file_contents == b"":
                 writer.write(f"RESOURCE_MISSING:{request}".encode())
