@@ -248,9 +248,6 @@ async def console() -> None:
     except CancelledError:
         globals.run = False
         raise SystemExit
-    except Exception as e:
-        print(type(e))
-        print(e)
 
 
 if __name__ == "__main__":

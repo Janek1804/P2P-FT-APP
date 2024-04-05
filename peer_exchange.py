@@ -198,12 +198,12 @@ async def listenTCP(sock: Optional[socket.socket] = None, port: int = 7050, list
         return
 
 
-async def advertise(resources: list, bcast: str = "255.255.255.255", http_port: int = 8080) -> None:
+async def advertise(resources: list, bcast: str = "255.255.255.255", http_port: int = 7051) -> None:
     """Broadcasts its presence to other peers on LAN
         INPUT:
         - resources (list) - list of resources to be broadcast
         - bcast (string) [default: "255.255.255.255"] - broadcast ip address in string format
-        - http_port (int) [default: 8080] - port number of local HTTP server
+        - http_port (int) [default: 7051] - port number of local HTTP server
         RETURNS NOTHING"""
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

@@ -25,7 +25,7 @@ async def init():
     app.add_routes([web.get('/', get_all),web.get('/{name}',get_file)])
     await runner.setup()
     try:
-        site = web.TCPSite(runner,globals.host ,8080)
+        site = web.TCPSite(runner,globals.host,7051)
         await site.start()
     except CancelledError:
         await runner.cleanup()
