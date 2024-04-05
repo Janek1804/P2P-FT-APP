@@ -1,5 +1,7 @@
 import asyncio
 import netifaces
+import socket
+import platform
 
 shpath:str = "shared"
 pcpath:str = "pieces"
@@ -28,3 +30,12 @@ def getAddresses()->list[str]:
         except KeyError:
             pass
     return addresses
+
+def setupUDPSocket(sock: socket.socket):
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    if platform.system() != "Windows":
+        try:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1) # type: ignore
+        except AttributeError:
+            return sock
+    return sock

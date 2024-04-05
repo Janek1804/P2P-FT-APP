@@ -11,6 +11,8 @@ from asyncio import CancelledError, wait_for, get_running_loop, open_connection
 
 import globals
 
+from globals import setupUDPSocket
+
 bcast_timer = 90
 dead_timer = 200
 
@@ -30,8 +32,8 @@ async def listenPEX(PEX_queue: asyncio.Queue)-> None:
         globals.new_issue.set()
         return
     try:
+        setupUDPSocket(sock)
         sock.bind(("", 7050))
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.setblocking(False)
     except CancelledError:
         sock.close()
@@ -215,8 +217,9 @@ async def advertise(resources: list, bcast: str = "255.255.255.255", http_port: 
     except CancelledError:
         return
     try:
-        sock.bind((globals.host, 7050))
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        setupUDPSocket(sock)
+        sock.bind((globals.host, 7050))
         sock.connect((bcast, 7050))
         sock.setblocking(False)
     except ConnectionError:
