@@ -91,6 +91,7 @@ async def handlePEX(PEX_queue: asyncio.Queue) -> None:
                             if data[2] == "UPDATE": # Get all on peer
                                 try:
                                     res_list = await request_resource(addr, port)
+                                    res_list = list(set(res_list))
                                     async with globals.peers_lock:
                                         globals.peers[addr] = [msg[1], res_list, 1]
                                 except ClientConnectionError:
@@ -105,6 +106,7 @@ async def handlePEX(PEX_queue: asyncio.Queue) -> None:
                                 if times == 0 or times >= 10: # Get or update all on peer
                                     try:
                                         res_list = await request_resource(addr, port)
+                                        res_list = list(set(res_list))
                                         async with globals.peers_lock:
                                             globals.peers[addr] = [msg[1], res_list, 1]
                                     except ClientConnectionError:
@@ -279,10 +281,10 @@ async def obtainFromPeer(resource: str, peer: str, port: int = 7050) -> bytes:
         writer.write(f"REQUEST:{resource};".encode())
         await writer.drain()
         try:
+            #er.write(f"CONTENT:{request};".encode() + file_contents)
             data = await wait_for(reader.read(-1), timeout = 60)
-            data = data.decode()
-            if data.startswith("CONTENT:"):
-                piece = data.partition(";")[2].encode()
+            if data.startswith(b"CONTENT:"):
+                piece = data[data.find(b";")+1:]
         except TimeoutError:
             pass
     except ConnectionError:

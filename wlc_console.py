@@ -114,6 +114,8 @@ async def console() -> None:
         while globals.run:
             user_input = (await as_input())
             cmd = user_input.lower().split()
+            if len(cmd) == 0:
+                continue
             cmd_id = await autocomplete(cmd[0], cmd_list)
             cmd_text = ""
             if cmd_id >= 0:
@@ -140,15 +142,14 @@ async def console() -> None:
                             piecenum:int = 1
                             async with globals.peers_lock:
                                 for addr in globals.peers.keys():
-                                    for l in globals.peers[addr][1:]:
-                                        l.pop(-1)
+                                    for l in globals.peers[addr][1:-1]:
                                         for s in l:
                                             if s.find(filename) != -1:
                                                 piecenum = int(s.split(":")[-1])
                                                 resources.append(f"{addr}:{s}")
                             download_possible = len(resources) >= piecenum
                             if download_possible:
-                                await trackpieces(filename,resources)
+                                download_possible = await trackpieces(filename,resources)
                             download_finished.set()
                             return download_possible
                         except CancelledError:
@@ -242,9 +243,14 @@ async def console() -> None:
                 case "update_shared":
                     globals.resetAnnouncementsPEX.set()
                     print("Announcements updated")
+                case _:
+                    pass
     except CancelledError:
         globals.run = False
         raise SystemExit
+    except Exception as e:
+        print(type(e))
+        print(e)
 
 
 if __name__ == "__main__":

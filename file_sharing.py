@@ -70,7 +70,7 @@ async def store_pieces(pieces:list[bytes],path:str)->None:
     else:
         print("No pieces to write")
 #Assuming resource list element local format <Address>:<Filename>:<Piece Number>:<Piece Quantity>
-async def trackpieces(filename:str,resourcelist:list[str])->None:
+async def trackpieces(filename:str,resourcelist:list[str])->bool:
     """Tracks pieces of file being obtained and stores the downloaded file
         INPUT:
         -filename (string) - name of file to obtain
@@ -79,16 +79,16 @@ async def trackpieces(filename:str,resourcelist:list[str])->None:
     filepieces:list[str] = []
     piecenums:list[int] = []
     for res in resourcelist:
-        if res.find(filename) != -1:
+        if filename == res.split(":")[1]:
             filepieces.append(res)
             try:
                 piecenums.append(int(float(res.split(":")[-2])))
             except ValueError:
                 print("Invalid piece number")
-
+    if len(filepieces) == 0:
+        return False
     if sorted(piecenums) != list(range(1,int(filepieces[-1].split(":")[-1])+1)):
-        print("Desired file unavailable!")
-        return
+        return False
     content:list[bytes]=[]
     requested:list[int] = []
     for piece in filepieces:
@@ -106,6 +106,7 @@ async def trackpieces(filename:str,resourcelist:list[str])->None:
             else:
                 requested.remove(piecenum)
     await writefile(filename,content)
+    return True
     
 async def writefile(filename:str,pieces:list[bytes])-> None:
     """Writes given pieces to a file
