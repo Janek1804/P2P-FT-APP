@@ -1,4 +1,3 @@
 aiofiles>=23.2.1
 aiohttp>=3.9.3
-bcoding>=1.5
 netifaces>=0.11.0
